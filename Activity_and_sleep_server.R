@@ -7,7 +7,7 @@ se <- function(x, na.rm=FALSE) {
 }
 
 #Present statistics
-dataReport <- function(Data){
+statisticsReport <- function(Data){
   
   req(nrow(Data)>0)
   
@@ -17,18 +17,18 @@ dataReport <- function(Data){
   Label <-  str_split_fixed(conditions, " - ",2)[,2]
   
   N  <- aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=length)[,2]
-  Data_mean <- round(aggregate(yPlot ~ interaction(labels,xPlot, sep = " - "), data=Data, FUN=mean)[,2],3)
-  Data_se <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=se)[,2],3)
-  Data_std <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=sd)[,2],3)
-  Data_median <- round(aggregate(yPlot ~ interaction(labels,xPlot, sep = " - "), data=Data, FUN=median)[,2],3)
-  Data_25 <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,2],3)
-  Data_75 <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,4],3)
+  Data_Mean <- round(aggregate(yPlot ~ interaction(labels,xPlot, sep = " - "), data=Data, FUN=mean)[,2],3)
+  Data_SEM <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=se)[,2],3)
+  Data_SD <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=sd)[,2],3)
+  Data_Median <- round(aggregate(yPlot ~ interaction(labels,xPlot, sep = " - "), data=Data, FUN=median)[,2],3)
+  Data_25Q <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,2],3)
+  Data_75Q <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,4],3)
   
-  return(data.frame(Condition, Label, N, Data_mean, Data_se, Data_std, Data_median, Data_25, Data_75))
+  return(data.frame(Condition, Label, N, Data_Mean, Data_SEM, Data_SD, Data_Median, Data_25Q, Data_75Q))
 }
 
 #Report to save
-saveReport <- function(data){
+dataReport <- function(data){
   
   orderedData <- data[order(data[,'order'])]
   
@@ -565,7 +565,6 @@ observeEvent(input$files,{
 })
 
 ############################ Data to plot ################################
-
 #Start analysis data
 observeEvent(input$startanalysis,{
 
@@ -592,12 +591,18 @@ observeEvent(input$sleepAnalysis2,{
   #get DAM data
   damData$dt[,"asleep" := sleep_dam_annotation(damData$dt[,1:3],min_time_immobile = 60*input$sleepTime2)[,'asleep']]
   
+  ActivityRepresentationsData()
   updateSleep()
   
   updateSliderInput(session,"sleepTime",value = input$sleepTime2)
   
   ActivityAndSleepData(graph = "sleep")
   updateSleepFigures()
+  
+  req(nrow((BoutSleepTimeData$lightDark))>0)
+  SleepBoutsData()
+  updateBoutSleepTimeFigures()
+  updateBoutSleepLatencyFigures()
   
 })
 
@@ -649,6 +654,7 @@ observeEvent(input$ActivitySummary_cell_edit,{
   }
   
 })
+
 #Sleep
 observeEvent(input$SleepSummary_cell_edit,{
   
@@ -721,7 +727,7 @@ observe({
   
   updateSliderInput(session,'yLimits',min = 0, max =ceiling(max(activity[,'yPlot'], na.rm =TRUE)), value = c(0,max(activity[,'yPlot'])))
   
-  output$ActivitySummary <- DT::renderDataTable(dataReport(activity),
+  output$ActivitySummary <- DT::renderDataTable(statisticsReport(activity),
                                                 escape = FALSE, selection = 'none', 
                                                 editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
   
@@ -750,7 +756,7 @@ observe({
     }
   }
   
-  output$SleepSummary <- DT::renderDataTable(dataReport(sleep),
+  output$SleepSummary <- DT::renderDataTable(statisticsReport(sleep),
                                              escape = FALSE, selection = 'none', 
                                              editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
 })
@@ -776,6 +782,22 @@ observeEvent(input$updateActivitySleepStatistics,{
   })
   
   updateYactivity()
+  
+  #Periodic representation update
+  updateFigures()
+  
+  req(nrow((BoutActivityData$lightDark))>0)
+  updateBoutActivityFigures()
+  updateBoutTimeFigures()
+  updateBoutSleepTimeFigures()
+  updateBoutSleepLatencyFigures()
+  
+  updateYBoutActivity()
+  updateYBoutTime()
+  updateYSleepTime()
+  updateYSleepLatency()
+  
+  
   
 })
 
@@ -1076,11 +1098,35 @@ observe({
         }
       }
       
+      animalsData <-  dataReport(data)
+      
       wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
-      addDataFrame(saveReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      
+      #Create organized data sheet
+      Labels <- animalsData[,'Labels']
+      
+      for (k in 6:ncol(animalsData)){
+        
+        dataColumn <- animalsData[,k]
+        DF <- data.frame(Labels,dataColumn)
+        joinedData <- DF %>%group_by(Labels) %>% group_nest()
+        
+        Data <- data.frame()
+        
+        for (i in 1:nrow(joinedData)){
+          Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
+        }
+        colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        sheet <- createSheet(wb, colnames(animalsData)[k])
+        addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
+      }
+      
       sheet <- createSheet(wb, "Statistics")
-      addDataFrame(dataReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
 
       saveWorkbook(wb, file = file)
     })
@@ -1122,11 +1168,34 @@ observe({
         }
       }
       
+      animalsData <-  dataReport(data)
+      
       wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
-      addDataFrame(saveReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      
+      #Create organized data sheet
+      Labels <- animalsData[,'Labels']
+      
+      for (k in 6:ncol(animalsData)){
+        
+        dataColumn <- animalsData[,k]
+        DF <- data.frame(Labels,dataColumn)
+        joinedData <- DF %>%group_by(Labels) %>% group_nest()
+        
+        Data <- data.frame()
+        
+        for (i in 1:nrow(joinedData)){
+          Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
+        }
+        colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        sheet <- createSheet(wb, colnames(animalsData)[k])
+        addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
+      }
       sheet <- createSheet(wb, "Statistics")
-      addDataFrame(dataReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
 
       saveWorkbook(wb, file = file)
     })

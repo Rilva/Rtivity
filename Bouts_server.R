@@ -113,7 +113,7 @@ observeEvent(input$files,{
 
 ############################ Data to plot ################################
 
-##### Data #####
+##### Data 
 #Activity bouts to plot
 boutActivitySummary <- function(graphs){
   
@@ -951,11 +951,12 @@ observeEvent(input$boutAnalysis,{
     
     #Calculus of the time difference between measurements
     damData$dt[,timeDiff := c(NaN,damData$dt[2:nrow(damData$dt),t]- damData$dt[1:(nrow(damData$dt)-1),t])]
-    meanTimeDiff <- mean(damData$dt[damData$dt[,timeDiff]>0,timeDiff]) #Minimum bin size
+    
+    meanTimeDiff <- mean(damData$dt[damData$dt[,timeDiff]>0,timeDiff],na.rm=TRUE) #Minimum bin size
     step <- round(mins(input$boutWindow)/meanTimeDiff) #Step for analysis
     
     #Actiivty bouts
-    damData$dt[,"movingBout" := sleep_dam_annotation(damData$dt[,1:3],min_time_immobile = 60*input$boutWindow)[,'asleep']]
+    damData$dt[,"movingBout" := !sleep_dam_annotation(damData$dt[,1:3],min_time_immobile = 60*input$boutWindow)[,'asleep']]
     
     #Calculate the start and final indexes for each sensor channel
     finalIndexes <- c()
@@ -967,6 +968,8 @@ observeEvent(input$boutAnalysis,{
     if (length(finalIndexes)>1){
       startIndexes <- c(startIndexes,(finalIndexes[1:(length(finalIndexes)-1)]+1))
     }
+    
+    damData$dt[startIndexes,timeDiff := NaN]
     
     #Introduce the variables bouts, boutTime and boutActivity
     dataSleepBout <- rep(FALSE,nrow(damData$dt))
@@ -985,7 +988,6 @@ observeEvent(input$boutAnalysis,{
     
     start_bouts <- c()
     end_bouts <- c()
-    
     activity <- c()
     
     #Calculate bouts
@@ -998,11 +1000,9 @@ observeEvent(input$boutAnalysis,{
       activityBout_dt <- bout_analysis(movingBout, damData$dt[startIndexes[j]:finalIndexes[j],])
       sleepBout_dt <- bout_analysis(asleep, damData$dt[startIndexes[j]:finalIndexes[j],])
       t <- damData$dt[startIndexes[j]:finalIndexes[j],t]
-      t<- t-min(t)
-      t<- t + t[2]
       
       sleepBouts <- sleepBout_dt[asleep == TRUE, -"asleep"]
-      activityBouts <- activityBout_dt[movingBout == FALSE, -"movingBout"]
+      activityBouts <- activityBout_dt[movingBout == TRUE, -"movingBout"]
       
       ### Get start and finish indexes of bouts
       sleepT <- sleepBouts[,t]
@@ -1049,10 +1049,11 @@ observeEvent(input$boutAnalysis,{
           # }
         }
       }
-      
+
       #Activity Bouts
       if (length(startRowActivity)>0){
         for (k in 1:min(c(length(startRowActivity),length(finishRowActivity)))){
+          
           
           dataActivityBout[(startIndexes[j]+startRowActivity[k]-1)] <- TRUE
           dataActivityBoutTime[(startIndexes[j]+startRowActivity[k]-1)] <- activityDuration[k]
@@ -1311,7 +1312,7 @@ observe({
   updateSliderInput(session,'yLimitsBoutActivity',min = 0, max =ceiling(max(boutActivity[,'yPlot'], na.rm =TRUE)), value = c(0,max(boutActivity[,'yPlot'])))
   
   
-  output$BoutActivitySummary <- DT::renderDataTable(dataReport(boutActivity),
+  output$BoutActivitySummary <- DT::renderDataTable(statisticsReport(boutActivity),
                                                 escape = FALSE, selection = 'none', 
                                                 editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
   
@@ -1340,7 +1341,7 @@ observe({
   
   updateSliderInput(session,'yLimitsBoutTime',min = 0, max =ceiling(max(boutTime[,'yPlot'], na.rm =TRUE)), value = c(0,max(boutTime[,'yPlot'])))
   
-  output$BoutTimeSummary <- DT::renderDataTable(dataReport(boutTime),
+  output$BoutTimeSummary <- DT::renderDataTable(statisticsReport(boutTime),
                                              escape = FALSE, selection = 'none', 
                                              editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
   
@@ -1369,7 +1370,7 @@ observe({
   
   updateSliderInput(session,'yLimitsBoutSleepTime',min = 0, max =ceiling(max(sleepBoutTime[,'yPlot'], na.rm =TRUE)), value = c(0,max(sleepBoutTime[,'yPlot'])))
   
-  output$SleepTimeSummary <- DT::renderDataTable(dataReport(sleepBoutTime),
+  output$SleepTimeSummary <- DT::renderDataTable(statisticsReport(sleepBoutTime),
                                                  escape = FALSE, selection = 'none', 
                                                  editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
 })
@@ -1392,7 +1393,7 @@ observe({
   
   updateSliderInput(session,'yLimitsSleepLatency',min = 0, max =ceiling(max(sleepLatency[,'yPlot'], na.rm =TRUE)), value = c(0,max(sleepLatency[,'yPlot'])))
   
-  output$SleepLatencySummary <- DT::renderDataTable(dataReport(sleepLatency),
+  output$SleepLatencySummary <- DT::renderDataTable(statisticsReport(sleepLatency),
                                                       escape = FALSE, selection = 'none', 
                                                       editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
   
@@ -1431,6 +1432,14 @@ observeEvent(input$updateBoutsStatistics,{
     updateYSleepLatency()
     incProgress(0.25)
   })
+  
+  #Periodic representations
+  updateFigures()
+  
+  #Activity and Sleep statistics
+  updateActivityFigures()
+  updateSleepFigures()
+  updateYactivity()
 
 })
 
@@ -1932,11 +1941,35 @@ observe({
       }
       
       #Create xlsx workbook of conditions and zeitgeber table
+      animalsData <-  dataReport(data)
+      
       wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
-      addDataFrame(saveReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      
+      #Create organized data sheet
+      Labels <- animalsData[,'Labels']
+      
+      for (k in 6:ncol(animalsData)){
+        
+        dataColumn <- animalsData[,k]
+        DF <- data.frame(Labels,dataColumn)
+        joinedData <- DF %>%group_by(Labels) %>% group_nest()
+        
+        Data <- data.frame()
+        
+        for (i in 1:nrow(joinedData)){
+          Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
+        }
+        colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        sheet <- createSheet(wb, colnames(animalsData)[k])
+        addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
+      }
+      
       sheet <- createSheet(wb, "Statistics")
-      addDataFrame(dataReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
 
       saveWorkbook(wb, file = file)
     })
@@ -1969,11 +2002,35 @@ observe({
       }
       
       #Create xlsx workbook of conditions and zeitgeber table
+      animalsData <-  dataReport(data)
+      
       wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
-      addDataFrame(saveReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      
+      #Create organized data sheet
+      Labels <- animalsData[,'Labels']
+      
+      for (k in 6:ncol(animalsData)){
+        
+        dataColumn <- animalsData[,k]
+        DF <- data.frame(Labels,dataColumn)
+        joinedData <- DF %>%group_by(Labels) %>% group_nest()
+        
+        Data <- data.frame()
+        
+        for (i in 1:nrow(joinedData)){
+          Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
+        }
+        colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        sheet <- createSheet(wb, colnames(animalsData)[k])
+        addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
+      }
+      
       sheet <- createSheet(wb, "Statistics")
-      addDataFrame(dataReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
 
       saveWorkbook(wb, file = file)
     })
@@ -2006,11 +2063,35 @@ observe({
       }
 
       #Create xlsx workbook of conditions and zeitgeber table
+      animalsData <-  dataReport(data)
+      
       wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
-      addDataFrame(saveReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      
+      #Create organized data sheet
+      Labels <- animalsData[,'Labels']
+      
+      for (k in 6:ncol(animalsData)){
+        
+        dataColumn <- animalsData[,k]
+        DF <- data.frame(Labels,dataColumn)
+        joinedData <- DF %>%group_by(Labels) %>% group_nest()
+        
+        Data <- data.frame()
+        
+        for (i in 1:nrow(joinedData)){
+          Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
+        }
+        colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        sheet <- createSheet(wb, colnames(animalsData)[k])
+        addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
+      }
+      
       sheet <- createSheet(wb, "Statistics")
-      addDataFrame(dataReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
 
       saveWorkbook(wb, file = file)
     })
@@ -2038,11 +2119,35 @@ observe({
       }
 
       #Create xlsx workbook of conditions and zeitgeber table
+      animalsData <-  dataReport(data)
+      
       wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
-      addDataFrame(saveReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      
+      #Create organized data sheet
+      Labels <- animalsData[,'Labels']
+      
+      for (k in 6:ncol(animalsData)){
+        
+        dataColumn <- animalsData[,k]
+        DF <- data.frame(Labels,dataColumn)
+        joinedData <- DF %>%group_by(Labels) %>% group_nest()
+        
+        Data <- data.frame()
+        
+        for (i in 1:nrow(joinedData)){
+          Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
+        }
+        colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        sheet <- createSheet(wb, colnames(animalsData)[k])
+        addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
+      }
+      
       sheet <- createSheet(wb, "Statistics")
-      addDataFrame(dataReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
 
       saveWorkbook(wb, file = file)
     })

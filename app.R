@@ -14,6 +14,21 @@ main code
 
 "
 
+### Install required packages before importing the libraries
+
+#list of packages required
+list.of.packages <- c("shiny","shinyFiles","shinyTime","shinyWidgets","behavr","data.table","ggplot2",
+                      "damr","zeitgebr","sleepr","ggetho","DT","fs","dplyr","Hmisc","shinyjs","readr","colourpicker",
+                      "lattice","survival","Formula","stringr","DescTools","graphics","doBy","zoo","tm","base",
+                      "scales","shinythemes","xlsx")
+
+#checking missing packages from list
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+
+#install missing ones
+if(length(new.packages)) install.packages(new.packages, dependencies = TRUE)
+
+
 library(shiny)
 library(shinyFiles)
 library(shinyTime)
@@ -41,12 +56,13 @@ library(graphics)
 library(doBy)
 library(zoo)
 library(tm)
-library(xlsx)
 library(base)
 library(scales)
 library(shinythemes)
+library(xlsx)
 
 shinyApp(
+  
   ui <- navbarPage(id="pages",
                    theme = shinytheme("spacelab"),
                    

@@ -333,6 +333,8 @@ observeEvent(input$files,{
 
   enable("importConditions")
   
+  updateChannels()
+  
 })
 
 ### Update data when selected file changes
@@ -919,10 +921,11 @@ observeEvent(input$startanalysis,{
     damData$dt[,timeDiff := c(NaN,damData$dt[2:nrow(damData$dt),t]- damData$dt[1:(nrow(damData$dt)-1),t])]
     updateSliderInput(session, "activityValue",min = round(mean(damData$dt[,timeDiff],na.rm=TRUE)/60))
     updateSliderInput(session, "boutValue",min = round(mean(damData$dt[,timeDiff],na.rm=TRUE)/60))
-    updateSliderInput(session,"movingAverage", min = ceiling(mean(damData$dt[,timeDiff],na.rm=TRUE)/60), step = max(damData$dt[,timeDiff],na.rm=TRUE)/60)
-    updateSliderInput(session,"boutWindow", min = ceiling(mean(damData$dt[,timeDiff],na.rm=TRUE)/60), step = max(damData$dt[,timeDiff],na.rm=TRUE)/60)
+    updateSliderInput(session,"movingAverage", min = ceiling(max(damData$dt[,timeDiff],na.rm=TRUE)/60), step = max(damData$dt[,timeDiff],na.rm=TRUE)/60)
+    updateSliderInput(session,"boutWindow", min = ceiling(max(damData$dt[,timeDiff],na.rm=TRUE)/60), step = max(damData$dt[,timeDiff],na.rm=TRUE)/60)
     updateRadioButtons(session, "activityBoxTime", selected = "Day")
     updateRadioButtons(session, "boutBoxPlot_time", selected = "Day")
+    
     
     #Periodic time adjustable by the user
     damData$dt[,'periodT' := (damData$dt[,'t'])]
@@ -1012,9 +1015,15 @@ observeEvent(input$Data_cell_edit, {
   
   #Change metadata value
   if (j==5){
+    
+    index <- which(v == Conditions$df[,5])
+    
     for (k in 1:length(Conditions$df[,5])){
       if (Conditions$df[k,5] == tableData$df[i,j]){
         Conditions$df[k,5] <- v
+        if(length(index)>0){
+          Conditions$df[k,6] <- Conditions$df[index[1],6]
+        }
       }
     }
   }
@@ -1296,6 +1305,9 @@ observeEvent(input$deleteAnimals,{
     need(length(channelsToRemove())>0,"")
   )
   
+  disable('deleteInactivity')
+  disable("deleteAnimals")
+  
   withProgress(message = 'Removing dead animals', value = 0, {
     indexesToDelete <- channelsToRemove()
     
@@ -1340,8 +1352,25 @@ observeEvent(input$deleteAnimals,{
   MinTime(TRUE)
   updateSliderInput(session,"movingAverage",value = 60)
   
-  shinyjs::disable('deleteInactivity')
-  disable("deleteAnimals")
+  
+  updateFigures()
+  
+  PeriodicRepresentationsData()
+  
+  updateActivityFigures()
+  updateSleepFigures()
+  
+  req(nrow((BoutActivityData$lightDark))>0)
+  updateBoutActivityFigures()
+  updateBoutTimeFigures()
+  updateBoutSleepTimeFigures()
+  updateBoutSleepLatencyFigures()
+  
+  updateYBoutActivity()
+  updateYBoutTime()
+  updateYSleepTime()
+  updateYSleepLatency()
+
   
 })
 
@@ -1353,7 +1382,27 @@ observeEvent(input$deleteInactivity,{
   
   disable("clean_data")
   disable("deleteInactivity")
-  shinyjs::disable('deleteAnimals')
+  disable('deleteAnimals')
+  
+  updateFigures()
+  
+  PeriodicRepresentationsData()
+  
+  updateActivityFigures()
+  updateSleepFigures()
+  
+  req(nrow((BoutActivityData$lightDark))>0)
+  updateBoutActivityFigures()
+  updateBoutTimeFigures()
+  updateBoutSleepTimeFigures()
+  updateBoutSleepLatencyFigures()
+  
+  updateYBoutActivity()
+  updateYBoutTime()
+  updateYSleepTime()
+  updateYSleepLatency()
+  
+
 })
 
 output$checkChannels <- renderPlot({
