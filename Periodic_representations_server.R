@@ -1,6 +1,14 @@
 
 ###########################  FUNCTIONS #################################
 
+#Change symbols for Excel sheets names
+checkSymbolsExcel <- function(x){
+  
+  x <- gsub('[[:punct:]]','.',x)
+  
+  return(x)
+}
+
 #Cbind fill
 cbind.fill <- function(...){
   nm <- list(...) 
@@ -280,7 +288,6 @@ updateDoublePlot <- function() {
 updateChronogram <- function() {
   
   ##### Chronogram Figure #####
-  print(unique(damData$dt[,'Data', meta = T]))
   fig <- ggetho(damData$dt,aes(x = periodT, y = activity, colour=Data, linetype = Data),summary_FUN = sum,
                 summary_time_window = mins(binSize())) + stat_pop_etho()
   
@@ -441,7 +448,7 @@ updateSleep <- function(){
 #Create and update all figures
 updateFigures <- function(){
   
-  withProgress(message = 'Computing graphs', value = 0, {
+  withProgress(message = 'Computing periodic graphs', value = 0, {
     incProgress(1/7) #Increment of progress bar
     updateActogram()
     
@@ -560,7 +567,7 @@ changeAestethics <- reactiveValues(selectedCondition = "None", selectedLine  = c
 Figures <- reactiveValues(actogram = NULL, doublePlot = NULL, chronogram = NULL, chronogram24h = NULL, periodogram = NULL, cumActivity = NULL, sleep = NULL)
 FiguresTitles <- reactiveValues(actogram = "Actogram", doublePlot = "Double Plot Actogram", chronogram = "Chronogram", chronogram24h = "Daily Chronogram", periodogram = "Periodogram", cumActivity = "Cumulative Activity", sleep = "Sleep Chronogram")
 FiguresXlabels <- reactiveValues(ActivityAndSleep = paste0("Time (days)"), periodogram = "Period (h)")
-FiguresYlabels <- reactiveValues(activity = paste("Mean activity per 60 minutes"), doublePlot = "Period", periodogram = "Power", cumActivity = "Cumulative Activity", sleep = paste("Mean sleep time ratio per 60 minutes"))
+FiguresYlabels <- reactiveValues(activity = paste("Activity per 60 minutes"), doublePlot = "Period", periodogram = "Power", cumActivity = "Cumulative Activity", sleep = paste("Sleep ratio per 60 minutes"))
 
 PeriodicData <- reactiveValues(activity = NULL, periodogram = NULL, cumActivity = NULL, sleep = NULL)
 PeriodicStatistics <- reactiveValues(activity = NULL, periodogram = NULL, cumActivity = NULL, sleep = NULL)
@@ -825,7 +832,7 @@ ActivityRepresentationsData <- function(){
   
   req(damData$dt)
   
-  withProgress(message = 'Statistical analysis', value = 0, {
+  withProgress(message = 'Actogram and Chronogram analysis', value = 0, {
     ##### Calculate activity and sleep data #####
     
     # damData$dt[,timeDiff := c(NaN,damData$dt[2:nrow(damData$dt),t]- damData$dt[1:(nrow(damData$dt)-1),t])]
@@ -940,36 +947,39 @@ PeriodicRepresentationsData <- function(){
   
   # Calculate periodogram data
   
-  req(PeriodData())
-  PeriodData()[,period := period/3600]
-  
-  peaks <- PeriodData()[which(peak==1),]
-  
-  if (nrow(peaks)>0){
-  
-    File <- peaks[,File, meta=T]
-    Labels <- peaks[,labels,meta=T]
-    Channels <- peaks[,region_id,meta=T]
-    Start_date <- peaks[,start_datetime,meta=T]
-    End_date <- peaks[,stop_datetime,meta=T]
+  withProgress(message = 'Periodogram analysis', value = 0, {
     
-    #Export data sheet
-    PeriodicData$periodogram <- data.frame(File,Labels,Channels,Start_date,End_date, peaks[,2:5])
+    req(PeriodData())
+    PeriodData()[,period := period/3600]
     
-    Conditions <- aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=length)[,1]
-    N  <- aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=length)[,2]
-    Period_mean <- round(aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=mean)[,2],3)
-    Period_se <- round(aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=se)[,2],3)
-    Period_std <- round(aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=sd)[,2],3)
-    Power_mean <- round(aggregate(power ~ Labels, data=PeriodicData$periodogram, FUN=mean)[,2],3)
-    Power_se  <- round(aggregate(power ~ Labels, data=PeriodicData$periodogram, FUN=se)[,2],3)
-    Power_std  <- round(aggregate(power ~ Labels, data=PeriodicData$periodogram, FUN=sd)[,2],3)
+    peaks <- PeriodData()[which(peak==1),]
     
-    PeriodicStatistics$periodogram <- data.frame(Conditions, N, Period_mean, Period_se, Period_std, Power_mean, Power_se, Power_std)
-  }
-  else{
-    PeriodicStatistics$periodogram <-  NULL
-  }
+    if (nrow(peaks)>0){
+    
+      File <- peaks[,File, meta=T]
+      Labels <- peaks[,labels,meta=T]
+      Channels <- peaks[,region_id,meta=T]
+      Start_date <- peaks[,start_datetime,meta=T]
+      End_date <- peaks[,stop_datetime,meta=T]
+      
+      #Export data sheet
+      PeriodicData$periodogram <- data.frame(File,Labels,Channels,Start_date,End_date, peaks[,2:5])
+      
+      Conditions <- aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=length)[,1]
+      N  <- aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=length)[,2]
+      Period_mean <- round(aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=mean)[,2],3)
+      Period_se <- round(aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=se)[,2],3)
+      Period_std <- round(aggregate(period ~ Labels, data=PeriodicData$periodogram, FUN=sd)[,2],3)
+      Power_mean <- round(aggregate(power ~ Labels, data=PeriodicData$periodogram, FUN=mean)[,2],3)
+      Power_se  <- round(aggregate(power ~ Labels, data=PeriodicData$periodogram, FUN=se)[,2],3)
+      Power_std  <- round(aggregate(power ~ Labels, data=PeriodicData$periodogram, FUN=sd)[,2],3)
+      
+      PeriodicStatistics$periodogram <- data.frame(Conditions, N, Period_mean, Period_se, Period_std, Power_mean, Power_se, Power_std)
+    }
+    else{
+      PeriodicStatistics$periodogram <-  NULL
+    }
+  })
 
 }
 
@@ -992,7 +1002,7 @@ output$PeriodData <- renderDataTable(statisticalData,
                                      editable  = list(target = 'cell',disable = list(columns = c(1,2,3,4,5,6,7,8))))
 })
 
-####### Periodogram ###########
+####### Periodogram #
 
 observeEvent(input$perFun,{
   if (input$perFun == "ls"){
@@ -1019,7 +1029,6 @@ observeEvent(input$startanalysis,{
   
   updateTabsetPanel(session, 'tabs', selected = "Chronogram")
   updateTabsetPanel(session, 'tabs', selected = "Actogram")
-  
 })
 
 
@@ -1033,6 +1042,7 @@ observeEvent(input$updateAesthetics,{
     updateFigures()
     
     PeriodicRepresentationsData()
+    ActivityRepresentationsData()
     
     updateActivityFigures()
     updateSleepFigures()
@@ -1247,16 +1257,16 @@ output$saveData <- downloadHandler(
         start <- match(uniqueLabels[1],Labels)
         for (i in 2:length(uniqueLabels)){
 
-          sheet = createSheet(wb, uniqueLabels[i-1])
+          sheet <- createSheet(wb, checkSymbolsExcel(uniqueLabels[i-1]))
           end <- match(uniqueLabels[i],Labels)-1
           addDataFrame(data[start:end,], sheet=sheet)
           start <- end+1
           }
-        sheet = createSheet(wb, uniqueLabels[length(uniqueLabels)])
+        sheet <- createSheet(wb, checkSymbolsExcel(uniqueLabels[length(uniqueLabels)]))
         addDataFrame(data[start:nrow(data),], sheet=sheet)
       }
       else{
-          sheet = createSheet(wb, uniqueLabels[1])
+          sheet <- createSheet(wb, checkSymbolsExcel(uniqueLabels[1]))
           addDataFrame(data, sheet=sheet, startColumn=1, row.names=FALSE)
         }
         

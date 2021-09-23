@@ -123,11 +123,14 @@ sidebarLayout(
   ),
   mainPanel(
     
+    h3("Activity bouts", align = "center", style = "font-weight:bold; margin-bottom:10px; border-radius: 5pt;
+       background-color:Lavender; padding:7px "),
+    
     tabsetPanel(id = "boutActivityPlotsTabs",
-                tabPanel("Mean activity bouts",plotOutput("boutActivityDayNight")),
-                tabPanel("Mean activity bouts per day",plotOutput("boutActivityPerDay")),
-                tabPanel("Mean activity bouts daytime vs nighttime",plotOutput("boutActivityDayNightPerDay")),
-                tabPanel("Mean activity bouts custom time",plotOutput("boutActivityCustomized"))
+                tabPanel("Activity per bout per light phase",plotOutput("boutActivityDayNight")),
+                tabPanel("Activity per bout per day",plotOutput("boutActivityPerDay")),
+                tabPanel("Activity per bout per day and light phase",plotOutput("boutActivityDayNightPerDay")),
+                tabPanel("Activity per bout customized time",plotOutput("boutActivityCustomized"))
                 
     ),
     fluidRow(
@@ -145,10 +148,10 @@ sidebarLayout(
     
     
     tabsetPanel(id = "boutTimePlotsTabs",
-                tabPanel("Mean bouts time",plotOutput("boutTimeDayNight")),
-                tabPanel("Mean bouts time per day",plotOutput("boutTimePerDay")),
-                tabPanel("Mean bouts time daytime vs nighttime",plotOutput("boutTimeDayNightPerDay")),
-                tabPanel("Mean bouts time custom time",plotOutput("boutTimeCustomized"))
+                tabPanel("Bout duration per light phase",plotOutput("boutTimeDayNight")),
+                tabPanel("Bout duration per day",plotOutput("boutTimePerDay")),
+                tabPanel("Bout duration per day and light phase",plotOutput("boutTimeDayNightPerDay")),
+                tabPanel("Bout duration customized time",plotOutput("boutTimeCustomized"))
                 
     ),
     fluidRow(
@@ -164,11 +167,15 @@ sidebarLayout(
              downloadButton("saveBoutTimeReport", "Save data")),
     ),
     
+    
+    h3("Sleep bouts", align = "center", style = "font-weight:bold; margin-bottom:10px; border-radius: 5pt;
+       background-color:Lavender; padding:7px "),
+    
     tabsetPanel(id = "SleepTimePlotsTabs",
-                tabPanel("Mean sleep bout time",plotOutput("SleepTimeDayNight")),
-                tabPanel("Mean sleep bout time per day",plotOutput("SleepTimePerDay")),
-                tabPanel("Mean sleep bout time daytime vs nighttime",plotOutput("SleepTimeDayNightPerDay")),
-                tabPanel("Mean sleep bout time custom time",plotOutput("SleepTimeCustomized"))
+                tabPanel("Sleep bout duration per light phase",plotOutput("SleepTimeDayNight")),
+                tabPanel("Sleep bout duration per day",plotOutput("SleepTimePerDay")),
+                tabPanel("Sleep bout duration per day and light phase",plotOutput("SleepTimeDayNightPerDay")),
+                tabPanel("Sleep bout duration customized time",plotOutput("SleepTimeCustomized"))
                 
     ),
     fluidRow(
@@ -187,7 +194,7 @@ sidebarLayout(
     tabsetPanel(id = "SleepLatencyPlotsTabs",
                 tabPanel("Sleep latency",plotOutput("SleepLatencyDayNight")),
                 tabPanel("Sleep latency per day",plotOutput("SleepLatencyPerDay")),
-                tabPanel("Sleep latency custom time",plotOutput("SleepLatencyCustomized"))
+                tabPanel("Sleep latency customized time",plotOutput("SleepLatencyCustomized"))
                 
     ),
     fluidRow(

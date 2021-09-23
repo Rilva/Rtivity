@@ -95,10 +95,10 @@ sidebarLayout(
   mainPanel(
     
     tabsetPanel(id = "ActivityboxPlotsTabs",
-                tabPanel("Mean activity",plotOutput("activityDayNight")),
-                tabPanel("Mean activity per day",plotOutput("activityPerDay")),
-                tabPanel("Mean activity daytime vs nighttime",plotOutput("activityDayNightPerDay")),
-                tabPanel("Mean activity custom time",plotOutput("activityCustomized"))
+                tabPanel("Activity per light phase",plotOutput("activityDayNight")),
+                tabPanel("Activity per day",plotOutput("activityPerDay")),
+                tabPanel("Activity per day and light phase",plotOutput("activityDayNightPerDay")),
+                tabPanel("Activity customized time",plotOutput("activityCustomized"))
                 
     ),
     fluidRow(
@@ -116,10 +116,10 @@ sidebarLayout(
     ),
     
     tabsetPanel(id = "SleepboxPlotsTabs",
-                tabPanel("Mean sleep",plotOutput("sleepDayNight")),
-                tabPanel("Mean sleep per day",plotOutput("sleepPerDay")),
-                tabPanel("Mean sleep daytime vs nighttime",plotOutput("sleepDayNightPerDay")),
-                tabPanel("Mean sleep custom time",plotOutput("sleepCustomized"))
+                tabPanel("Sleep ratio per light phase",plotOutput("sleepDayNight")),
+                tabPanel("Sleep ratio per day",plotOutput("sleepPerDay")),
+                tabPanel("Sleep ratio per day and light phase",plotOutput("sleepDayNightPerDay")),
+                tabPanel("Sleep ratio customized time",plotOutput("sleepCustomized"))
                 
     ),
     fluidRow(

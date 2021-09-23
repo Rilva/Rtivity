@@ -86,6 +86,8 @@ statisticPlots <- function(data, plot, error = NaN, graph = "activity" ){
 #Functions to calculate data to plot
 activitySummary <- function(graph){
   
+  sumNA <- function(x) if((is.nan(mean(x)))) NA_integer_ else sum(x, na.rm=TRUE)
+  
   req(damData$dt)
   
   #Day 0 of the data
@@ -95,8 +97,8 @@ activitySummary <- function(graph){
   if(graph == "lightDark"){
     
     #Light and Dark of day 0
-    summaryLight <- rejoin(damData$dt[, .(Activity_Light = sum(activity[day_night == "TRUE"],na.rm=TRUE)), by = id])
-    summaryNight <- rejoin(damData$dt[, .(Activity_Dark = sum(activity[day_night == "FALSE"],na.rm = TRUE)), by = id])
+    summaryLight <- rejoin(damData$dt[, .(Activity_Light = sumNA(activity[day_night == "TRUE"])), by = id])
+    summaryNight <- rejoin(damData$dt[, .(Activity_Dark = sumNA(activity[day_night == "FALSE"])), by = id])
     
     summaryDT <- cbind(summaryLight, summaryNight[,Activity_Dark])
     names(summaryDT)[length(names(summaryDT))] <- paste0("Activity_Dark")
@@ -111,16 +113,17 @@ activitySummary <- function(graph){
   if(graph == "day"){
     
     #Light and Dark of day 0
-    summaryDT <- rejoin(damData$dt[, .(Activity = sum(activity[experimentDay==startDay],na.rm=TRUE)), by = id])
+    summaryDT <- rejoin(damData$dt[, .(Activity = sumNA(activity[experimentDay==startDay])), by = id])
     
     #Change names to use in the graphs
     names(summaryDT)[names(summaryDT) == "Activity"] <- paste0("Activity_Day_",startDay)
     
+    
     #Add data for next days
     if (max(damData$dt[,'experimentDay'])>min(damData$dt[,'experimentDay'])){
       for (n in (startDay+1):max(damData$dt[,'experimentDay'])){
-        
-        summary <- rejoin(damData$dt[, .(Activity = sum(activity[experimentDay==n], na.rm = TRUE)), by = id])
+      
+        summary <- rejoin(damData$dt[, .(Activity = sumNA(activity[experimentDay==n])), by = id])
         
         summaryDT <- cbind(summaryDT,summary[,Activity])
         names(summaryDT)[length(names(summaryDT))] <- paste0("Activity_Day_",n)
@@ -140,8 +143,8 @@ activitySummary <- function(graph){
     
     
     #Light and Dark of day 0
-    summaryLight <- rejoin(damData$dt[, .(activity_Day = sum(activity[experimentDay==startDay & day_night == "TRUE"],na.rm=TRUE)), by = id])
-    summaryNight <- rejoin(damData$dt[, .(activity_Night = sum(activity[experimentDay==startDay & day_night == "FALSE"],na.rm = TRUE)), by = id])
+    summaryLight <- rejoin(damData$dt[, .(activity_Day = sumNA(activity[experimentDay==startDay & day_night == "TRUE"])), by = id])
+    summaryNight <- rejoin(damData$dt[, .(activity_Night = sumNA(activity[experimentDay==startDay & day_night == "FALSE"])), by = id])
     
     #Change names to use in the graphs
     names(summaryLight)[names(summaryLight) == "activity_Day"] <- paste0("Activity_Day_",startDay,"_Light")
@@ -153,12 +156,12 @@ activitySummary <- function(graph){
     if (max(damData$dt[,'experimentDay'])>min(damData$dt[,'experimentDay'])){
       for (n in (startDay+1):max(damData$dt[,'experimentDay'])){
         
-        summary <- rejoin(damData$dt[, .(activity_Day = sum(activity[experimentDay==n & day_night == "TRUE"], na.rm = TRUE)), by = id])
+        summary <- rejoin(damData$dt[, .(activity_Day = sumNA(activity[experimentDay==n & day_night == "TRUE"])), by = id])
         
         summaryDT <- cbind(summaryDT,summary[,activity_Day])
         names(summaryDT)[length(names(summaryDT))] <- paste0("Activity_Day_",n,"_Light")
         
-        summary <- rejoin(damData$dt[, .(activity_Night = sum(activity[experimentDay==n & day_night == "FALSE"], na.rm = TRUE)), by = id])
+        summary <- rejoin(damData$dt[, .(activity_Night = sumNA(activity[experimentDay==n & day_night == "FALSE"])), by = id])
         
         summaryDT <- cbind(summaryDT,summary[,activity_Night])
         names(summaryDT)[length(names(summaryDT))] <- paste0("Activity_Day_",n,"_Dark")
@@ -180,14 +183,14 @@ activitySummary <- function(graph){
     #Separate by customized activity
     startTime <- min(damData$dt[,activityBoxPlot_time])
     
-    summaryDT <- rejoin(damData$dt[, .(activity_Day = sum(activity[activityBoxPlot_time==startTime],na.rm=TRUE)), by = id])
+    summaryDT <- rejoin(damData$dt[, .(activity_Day = sumNA(activity[activityBoxPlot_time==startTime])), by = id])
     
     names(summaryDT)[names(summaryDT) == "activity_Day"] <- paste0("Group",startTime)
     
     if (max(damData$dt[,t])>startTime){
       for (n in (startTime+1):(max(damData$dt[,activityBoxPlot_time])-startTime)){
         
-        summary <- rejoin(damData$dt[, .(activity_Day = sum(activity[activityBoxPlot_time==n],na.rm=TRUE)), by = id])
+        summary <- rejoin(damData$dt[, .(activity_Day = sumNA(activity[activityBoxPlot_time==n])), by = id])
         
         summaryDT <- cbind(summaryDT,summary[,activity_Day])
         names(summaryDT)[length(names(summaryDT))] <- paste0("Group",n)
@@ -325,14 +328,26 @@ ActivityAndSleepData <- function(graph = NaN, all=TRUE){
   
   if (all == TRUE){
     if (is.nan(graph) | graph == "activity"){
-      ActivityData$lightDark <- activitySummary("lightDark")
-      ActivityData$day <- activitySummary("day")
-      ActivityData$dayLightDark <- activitySummary("dayLightDark")}
+      withProgress(message = 'Compute activity statistics', value = 0, {
+        ActivityData$lightDark <- activitySummary("lightDark")
+        incProgress(1/3)
+        ActivityData$day <- activitySummary("day")
+        incProgress(1/3)
+        ActivityData$dayLightDark <- activitySummary("dayLightDark")
+        incProgress(1/3)
+        })
+    }
     
     if (is.nan(graph) | graph == "sleep"){
-      SleepData$lightDark <- sleepSummary("lightDark")
-      SleepData$day <- sleepSummary("day")
-      SleepData$dayLightDark <- sleepSummary("dayLightDark")}}
+      withProgress(message = 'Compute sleep statistics', value = 0, {
+        SleepData$lightDark <- sleepSummary("lightDark")
+        incProgress(1/3)
+        SleepData$day <- sleepSummary("day")
+        incProgress(1/3)
+        SleepData$dayLightDark <- sleepSummary("dayLightDark")
+        incProgress(1/3)
+    })
+  }}
   
   if (is.nan(graph) | graph == "activity"){
     ActivityData$custom <- activitySummary("custom")}
@@ -343,15 +358,15 @@ ActivityAndSleepData <- function(graph = NaN, all=TRUE){
 #Update Y axis range
 updateYactivity <- function() {
   
-  if (input$ActivityboxPlotsTabs == "Mean activity"){
+  if (input$ActivityboxPlotsTabs == "Activity per light phase"){
     ActivityFigures$lightDark <- ActivityFigures$lightDark + coord_cartesian(ylim = input$yLimits)
   }
   else{
-    if (input$ActivityboxPlotsTabs == "Mean activity per day"){
+    if (input$ActivityboxPlotsTabs == "Activity per day"){
       ActivityFigures$day <- ActivityFigures$day + coord_cartesian(ylim = input$yLimits)
     }
     else{
-      if(input$ActivityboxPlotsTabs == "Mean activity daytime vs nighttime"){
+      if(input$ActivityboxPlotsTabs == "Activity per day and light phase"){
         ActivityFigures$dayLightDark <- ActivityFigures$dayLightDark + coord_cartesian(ylim = input$yLimits)
       }
       else{
@@ -367,15 +382,15 @@ updateActivityLabels <- function(){
   ActivityFiguresXLabel(input$ActivityBoxXLabel)
   ActivityFiguresYLabel(input$ActivityBoxYLabel)
   
-  if (input$ActivityboxPlotsTabs == "Mean activity"){
+  if (input$ActivityboxPlotsTabs == "Activity per light phase"){
     ActivityFiguresTitles$lightDark <- input$ActivityBoxTitle
   }
   else{
-    if (input$ActivityboxPlotsTabs == "Mean activity per day"){
+    if (input$ActivityboxPlotsTabs == "Activity per day"){
       ActivityFiguresTitles$day <- input$ActivityBoxTitle
     }
     else{
-      if(input$ActivityboxPlotsTabs == "Mean activity daytime vs nighttime"){
+      if(input$ActivityboxPlotsTabs == "Activity per day and light phase"){
         ActivityFiguresTitles$dayLightDark <- input$ActivityBoxTitle
       }
       else{
@@ -387,15 +402,15 @@ updateActivityLabels <- function(){
   SleepFiguresXLabel(input$SleepBoxXLabel)
   SleepFiguresYLabel(input$SleepBoxYLabel)
   
-  if (input$SleepboxPlotsTabs == "Mean sleep"){
+  if (input$SleepboxPlotsTabs == "Sleep ratio per light phase"){
     SleepFiguresTitles$lightDark <- input$SleepBoxTitle
   }
   else{
-    if (input$SleepboxPlotsTabs == "Mean sleep per day"){
+    if (input$SleepboxPlotsTabs == "Sleep ratio per day"){
       SleepFiguresTitles$day <- input$sleepBoxTitle
     }
     else{
-      if(input$SleepboxPlotsTabs == "Mean sleep daytime vs nighttime"){
+      if(input$SleepboxPlotsTabs == "Sleep ratio per day and light phase"){
         SleepFiguresTitles$dayLightDark <- input$SleepBoxTitle
       }
       else{
@@ -442,9 +457,14 @@ updateActivityCustom <- function() {
 updateActivityFigures <- function (all=TRUE) {
   
     if (all == TRUE){
-      updateActivityLightDark()
-      updateActivityDay()
-      updateActivityDayLightDark()
+      withProgress(message = 'Activity figures', value = 0, {
+        updateActivityLightDark()
+        incProgress(1/3)
+        updateActivityDay()
+        incProgress(1/3)
+        updateActivityDayLightDark()
+        incProgress(1/3)
+      })
     }
     updateActivityCustom()
   
@@ -491,10 +511,14 @@ updateSleepCustom <- function() {
 updateSleepFigures <- function (all=TRUE) {
   
     if (all == TRUE){
-      
-      updateSleepLightDark()
-      updateSleepDay()
-      updateSleepDayLightDark()
+      withProgress(message = 'Activity figures', value = 0, {
+        updateSleepLightDark()
+        incProgress(1/3)
+        updateSleepDay()
+        incProgress(1/3)
+        updateSleepDayLightDark()
+        incProgress(1/3)
+      })
     }
     
     updateSleepCustom()
@@ -506,18 +530,18 @@ updateSleepFigures <- function (all=TRUE) {
 ### Activity data and figure variables
 ActivityData <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
 ActivityFigures <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
-ActivityFiguresTitles <- reactiveValues(lightDark = "Mean activity per light phase", day = "Mean activity per day", 
-                                        dayLightDark = "Mean activity per day and per light phase", custom = "Mean activity")
+ActivityFiguresTitles <- reactiveValues(lightDark = "Activity per light phase", day = "Activity per day", 
+                                        dayLightDark = "Activity per day and per light phase", custom = "Activity")
 ActivityFiguresXLabel <- reactiveVal("")
-ActivityFiguresYLabel <- reactiveVal("Mean activity")
+ActivityFiguresYLabel <- reactiveVal("Activity (counts)")
 
 ### Sleep data and figure variables
 SleepData <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
 SleepFigures <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
-SleepFiguresTitles <- reactiveValues(lightDark = "Mean sleep ratio per light phase", day = "Mean sleep ratio per day", 
-                                        dayLightDark = "Mean sleep ratio per day and per light phase", custom = "Mean sleep ratio")
+SleepFiguresTitles <- reactiveValues(lightDark = "Sleep ratio per light phase", day = "Sleep ratio per day", 
+                                        dayLightDark = "Sleep ratio per day and per light phase", custom = "Sleep ratio")
 SleepFiguresXLabel <- reactiveVal("")
-SleepFiguresYLabel <- reactiveVal("Mean sleep ratio")
+SleepFiguresYLabel <- reactiveVal("Sleep ratio")
 
 ##################### Restart variables #####################
 observeEvent(input$files,{
@@ -538,12 +562,12 @@ observeEvent(input$files,{
   ActivityFigures$dayLightDark <- NULL
   ActivityFigures$custom <- NULL
   
-  ActivityFiguresTitles$lightDark <- "Mean activity per light phase"
-  ActivityFiguresTitles$day <- "Mean activity per day"
-  ActivityFiguresTitles$dayLightDark <- "Mean activity per day and per light phase"
-  ActivityFiguresTitles$custom <- "Mean activity"
+  ActivityFiguresTitles$lightDark <- "Activity per light phase"
+  ActivityFiguresTitles$day <- "Activity per day"
+  ActivityFiguresTitles$dayLightDark <- "Activity per day and per light phase"
+  ActivityFiguresTitles$custom <- "Activity"
   ActivityFiguresXLabel("")
-  ActivityFiguresYLabel("Mean activity")
+  ActivityFiguresYLabel("Activity (counts)")
   
   #Sleep
   SleepData$lightDark <- NULL
@@ -556,12 +580,12 @@ observeEvent(input$files,{
   SleepFigures$dayLightDark <- NULL
   SleepFigures$custom <- NULL
   
-  SleepFiguresTitles$lightDark <- "Mean sleep ratio per light phase"
-  SleepFiguresTitles$day <- "Mean sleep ratio per day"
-  SleepFiguresTitles$dayLightDark <- "Mean sleep ratio per day and per light phase"
-  SleepFiguresTitles$custom <- "Mean sleep ratio"
+  SleepFiguresTitles$lightDark <- "Sleep ratio per light phase"
+  SleepFiguresTitles$day <- "Sleep ratio per day"
+  SleepFiguresTitles$dayLightDark <- "Sleep ratio per day and per light phase"
+  SleepFiguresTitles$custom <- "Sleep ratio"
   SleepFiguresXLabel("")
-  SleepFiguresYLabel("Mean sleep ratio")
+  SleepFiguresYLabel("Sleep ratio")
 })
 
 ############################ Data to plot ################################
@@ -632,17 +656,17 @@ observeEvent(input$ActivitySummary_cell_edit,{
     return(activity)
   }
   
-  if (input$ActivityboxPlotsTabs == "Mean activity"){
+  if (input$ActivityboxPlotsTabs == "Activity per light phase"){
     ActivityData$lightDark <- changeLabels(ActivityData$lightDark)
     updateActivityLightDark()
   }
   else{
-    if (input$ActivityboxPlotsTabs == "Mean activity per day"){
+    if (input$ActivityboxPlotsTabs == "Activity per day"){
       ActivityData$day <- changeLabels(ActivityData$day)
       updateActivityDay()
     }
     else{
-      if(input$ActivityboxPlotsTabs == "Mean activity daytime vs nighttime"){
+      if(input$ActivityboxPlotsTabs == "Activity per day and light phase"){
         ActivityData$dayLightDark <- changeLabels(ActivityData$dayLightDark)
         updateActivityDayLightDark()
       }
@@ -678,17 +702,17 @@ observeEvent(input$SleepSummary_cell_edit,{
     return(sleep)
   }
   
-  if (input$SleepboxPlotsTabs == "Mean sleep"){
+  if (input$SleepboxPlotsTabs == "Sleep ratio per light phase"){
     SleepData$lightDark <- changeLabels(SleepData$lightDark)
     updateSleepLightDark()
   }
   else{
-    if (input$SleepboxPlotsTabs == "Mean sleep per day"){
+    if (input$SleepboxPlotsTabs == "Sleep ratio per day"){
       SleepData$day <- changeLabels(SleepData$day)
       updateSleepDay()
     }
     else{
-      if(input$SleepboxPlotsTabs == "Mean sleep daytime vs nighttime"){
+      if(input$SleepboxPlotsTabs == "Sleep ratio per day and light phase"){
         SleepData$dayLightDark <- changeLabels(SleepData$dayLightDark)
         updateSleepDayLightDark()
       }
@@ -708,15 +732,15 @@ observe({
   req(nrow(damData$dt)>0)
   req(nrow(ActivityData$lightDark)>0)
   
-  if (input$ActivityboxPlotsTabs == "Mean activity"){
+  if (input$ActivityboxPlotsTabs == "Activity per light phase"){
     activity <- ActivityData$lightDark
   }
   else{
-    if (input$ActivityboxPlotsTabs == "Mean activity per day"){
+    if (input$ActivityboxPlotsTabs == "Activity per day"){
       activity <- ActivityData$day
     }
     else{
-      if(input$ActivityboxPlotsTabs == "Mean activity daytime vs nighttime"){
+      if(input$ActivityboxPlotsTabs == "Activity per day and light phase"){
         activity <- ActivityData$dayLightDark
       }
       else{
@@ -739,15 +763,15 @@ observe({
   req(nrow(damData$dt)>0)
   req(nrow(SleepData$lightDark)>0)
   
-  if (input$SleepboxPlotsTabs == "Mean sleep"){
+  if (input$SleepboxPlotsTabs == "Sleep ratio per light phase"){
     sleep <- SleepData$lightDark
   }
   else{
-    if (input$SleepboxPlotsTabs == "Mean sleep per day"){
+    if (input$SleepboxPlotsTabs == "Sleep ratio per day"){
       sleep <- SleepData$day
     }
     else{
-      if(input$SleepboxPlotsTabs == "Mean sleep daytime vs nighttime"){
+      if(input$SleepboxPlotsTabs == "Sleep ratio per day and light phase"){
         sleep <- SleepData$dayLightDark
       }
       else{
@@ -808,15 +832,15 @@ observeEvent(input$ActivityboxPlotsTabs,{
   updateTextInput(session, "ActivityBoxXLabel", value = ActivityFiguresXLabel())
   updateTextInput(session, "ActivityBoxYLabel", value = ActivityFiguresYLabel())
   
-  if (input$ActivityboxPlotsTabs == "Mean activity"){
+  if (input$ActivityboxPlotsTabs == "Activity per light phase"){
     updateTextInput(session,"ActivityBoxTitle", value = ActivityFiguresTitles$lightDark)
   }
   else{
-    if (input$ActivityboxPlotsTabs == "Mean activity per day"){
+    if (input$ActivityboxPlotsTabs == "Activity per day"){
       updateTextInput(session,"ActivityBoxTitle", value = ActivityFiguresTitles$day)
     }
     else{
-      if(input$ActivityboxPlotsTabs == "Mean activity daytime vs nighttime"){
+      if(input$ActivityboxPlotsTabs == "Activity per day and light phase"){
         updateTextInput(session,"ActivityBoxTitle", value = ActivityFiguresTitles$dayLightDark)
       }
       else{
@@ -832,15 +856,15 @@ observeEvent(input$SleepboxPlotsTabs,{
   updateTextInput(session, "SleepBoxXLabel", value = SleepFiguresXLabel())
   updateTextInput(session, "SleepBoxYLabel", value = SleepFiguresYLabel())
   
-  if (input$SleepboxPlotsTabs == "Mean sleep"){
+  if (input$SleepboxPlotsTabs == "Sleep ratio per light phase"){
     updateTextInput(session,"SleepBoxTitle", value = SleepFiguresTitles$lightDark)
   }
   else{
-    if (input$SleepboxPlotsTabs == "Mean sleep per day"){
+    if (input$SleepboxPlotsTabs == "Sleep ratio per day"){
       updateTextInput(session,"SleepBoxTitle", value = SleepFiguresTitles$day)
     }
     else{
-      if(input$SleepboxPlotsTabs == "Mean sleep daytime vs nighttime"){
+      if(input$SleepboxPlotsTabs == "Sleep ratio per day and light phase"){
         updateTextInput(session,"SleepBoxTitle", value = SleepFiguresTitles$dayLightDark)
       }
       else{
@@ -999,15 +1023,15 @@ observe({
     },
     content = function(file){
       
-      if (input$ActivityboxPlotsTabs == "Mean activity"){
+      if (input$ActivityboxPlotsTabs == "Activity per light phase"){
         fig <- ActivityFigures$lightDark
       }
       else{
-        if (input$ActivityboxPlotsTabs == "Mean activity per day"){
+        if (input$ActivityboxPlotsTabs == "Activity per day"){
           fig <- ActivityFigures$day
         }
         else{
-          if(input$ActivityboxPlotsTabs == "Mean activity daytime vs nighttime"){
+          if(input$ActivityboxPlotsTabs == "Activity per day and light phase"){
             fig <- ActivityFigures$dayLightDark
           }
           else{
@@ -1039,15 +1063,15 @@ observe({
     },
     content = function(file){
       
-      if (input$SleepboxPlotsTabs == "Mean sleep"){
+      if (input$SleepboxPlotsTabs == "Sleep ratio per light phase"){
         fig <- SleepFigures$lightDark
       }
       else{
-        if (input$SleepboxPlotsTabs == "Mean sleep per day"){
+        if (input$SleepboxPlotsTabs == "Sleep ratio per day"){
           fig <- SleepFigures$day
         }
         else{
-          if(input$SleepboxPlotsTabs == "Mean sleep daytime vs nighttime"){
+          if(input$SleepboxPlotsTabs == "Sleep ratio per day and light phase"){
             fig <- SleepFigures$dayLightDark
           }
           else{
@@ -1081,15 +1105,15 @@ observe({
     content = function(file){
       #Create xlsx workbook of conditions and zeitgeber table
       
-      if (input$ActivityboxPlotsTabs == "Mean activity"){
+      if (input$ActivityboxPlotsTabs == "Activity per light phase"){
         data <- ActivityData$lightDark
       }
       else{
-        if (input$ActivityboxPlotsTabs == "Mean activity per day"){
+        if (input$ActivityboxPlotsTabs == "Activity per day"){
           data <- ActivityData$day
         }
         else{
-          if(input$ActivityboxPlotsTabs == "Mean activity daytime vs nighttime"){
+          if(input$ActivityboxPlotsTabs == "Activity per day and light phase"){
             data <- ActivityData$dayLightDark
           }
           else{
@@ -1151,15 +1175,15 @@ observe({
 
       #Create xlsx workbook of conditions and zeitgeber table
       
-      if (input$SleepboxPlotsTabs == "Mean sleep"){
+      if (input$SleepboxPlotsTabs == "Sleep ratio per light phase"){
         data <- SleepData$lightDark
       }
       else{
-        if (input$SleepboxPlotsTabs == "Mean sleep per day"){
+        if (input$SleepboxPlotsTabs == "Sleep ratio per day"){
           data <- SleepData$day
         }
         else{
-          if(input$SleepboxPlotsTabs == "Mean sleep daytime vs nighttime"){
+          if(input$SleepboxPlotsTabs == "Sleep ratio per day and light phase"){
             data <- SleepData$dayLightDark
           }
           else{

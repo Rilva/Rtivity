@@ -74,7 +74,7 @@ shinyApp(
                             
 
                               h1("Rtivity", align = "center", style = "font-family: Roboto; font-size: 60px;
-                           font-weight:bold; color: "),
+                           font-weight:bold "),
                            #
                             h3("A versatile software for automated analysis of activity patterns in small organisms", align = "center", style = "font-family: Roboto; font-size: 30px;
                            font-weight:bold;margin-bottom: 80px"),

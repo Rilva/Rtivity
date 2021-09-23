@@ -11,18 +11,18 @@ BoutActivityFiguresYLabel <- reactiveVal("Mean activity per bout")
 ### Time per bout data and figure variables
 BoutTimeData <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
 BoutTimeFigures <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
-BoutTimeFiguresTitles <- reactiveValues(lightDark = "Mean time per bout per light phase", day = "Mean time per bout per day", 
-                                            dayLightDark = "Mean time per bout day and per light phase", custom = "Mean time per bout")
+BoutTimeFiguresTitles <- reactiveValues(lightDark = "Mean bout duration per light phase", day = "Mean bout duration per day", 
+                                            dayLightDark = "Mean bout duration day and per light phase", custom = "Mean duration per bout")
 BoutTimeFiguresXLabel <- reactiveVal("")
-BoutTimeFiguresYLabel <- reactiveVal("Mean time per bout")
+BoutTimeFiguresYLabel <- reactiveVal("Mean bout duration")
 
 ### Time per sleep bout data and figure variables
 BoutSleepTimeData <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
 BoutSleepTimeFigures <- reactiveValues(lightDark = NULL, day = NULL, dayLightDark = NULL, custom = NULL)
-BoutSleepTimeFiguresTitles <- reactiveValues(lightDark = "Mean time per sleep bout per light phase", day = "Mean time per sleep bout per day", 
-                                     dayLightDark = "Mean time per sleep bout per day and per light phase", custom = "Mean time per sleep bout")
+BoutSleepTimeFiguresTitles <- reactiveValues(lightDark = "Mean sleep bout duration per light phase", day = "Mean sleep bout duration per day", 
+                                     dayLightDark = "Mean sleep bout duration per day and per light phase", custom = "Mean sleep bout duration")
 BoutSleepTimeFiguresXLabel <- reactiveVal("")
-BoutSleepTimeFiguresYLabel <- reactiveVal("Mean time per sleep bout")
+BoutSleepTimeFiguresYLabel <- reactiveVal("Mean sleep bout duration")
 
 ### Sleep Latency data and figure variables
 BoutSleepLatencyData <- reactiveValues(all = NULL, day = NULL, custom = NULL)
@@ -69,12 +69,12 @@ observeEvent(input$files,{
   BoutTimeFigures$dayLightDark <- NULL
   BoutTimeFigures$custom <- NULL
   
-  BoutTimeFiguresTitles$lightDark <- "Mean time per bout per light phase"
-  BoutTimeFiguresTitles$day <- "Mean time per bout per day"
-  BoutTimeFiguresTitles$dayLightDark <- "Mean time per bout day and per light phase"
-  BoutTimeFiguresTitles$custom <- "Mean time per bout"
+  BoutTimeFiguresTitles$lightDark <- "Mean bout duration per light phase"
+  BoutTimeFiguresTitles$day <- "Mean bout duration per day"
+  BoutTimeFiguresTitles$dayLightDark <- "Mean bout duration day and per light phase"
+  BoutTimeFiguresTitles$custom <- "Mean bout duration"
   BoutTimeFiguresXLabel("")
-  BoutTimeFiguresYLabel("Mean time per bout")
+  BoutTimeFiguresYLabel("Mean bout duration")
   
   #Sleep bout time
   BoutSleepTimeData$lightDark <- NULL
@@ -87,12 +87,12 @@ observeEvent(input$files,{
   BoutSleepTimeFigures$dayLightDark <- NULL
   BoutSleepTimeFigures$custom <- NULL
   
-  BoutSleepTimeFiguresTitles$lightDark <- "Mean time per sleep bout per light phase"
-  BoutSleepTimeFiguresTitles$day <- "Mean time per sleep bout per day"
-  BoutSleepTimeFiguresTitles$dayLightDark <- "Mean time per sleep bout per day and per light phase"
-  BoutSleepTimeFiguresTitles$custom <- "Mean time per sleep bout"
+  BoutSleepTimeFiguresTitles$lightDark <- "Mean sleep bout duration per light phase"
+  BoutSleepTimeFiguresTitles$day <- "Mean sleep bout duration per day"
+  BoutSleepTimeFiguresTitles$dayLightDark <- "Mean sleep bout duration per day and per light phase"
+  BoutSleepTimeFiguresTitles$custom <- "Mean sleep bout duration"
   BoutSleepTimeFiguresXLabel("")
-  BoutSleepTimeFiguresYLabel("Mean time per sleep bout")
+  BoutSleepTimeFiguresYLabel("Mean sleep bout duration")
   
   #Sleep latency
   
@@ -109,6 +109,12 @@ observeEvent(input$files,{
   BoutSleepLatencyFiguresTitles$custom <- "Mean sleep latency"
   BoutSleepLatencyFiguresXLabel("")
   BoutSleepLatencyFiguresYLabel("Mean sleep latency")
+  
+  #Clean data presented
+  output$BoutActivitySummary <- NULL
+  output$BoutTimeSummary <- NULL
+  output$SleepTimeSummary <- NULL
+  output$SleepLatencySummary <- NULL
 })
 
 ############################ Data to plot ################################
@@ -346,8 +352,11 @@ boutTimeSummary <- function(graphs){
     summaryDT_melted <- melt(summaryDT, measure.vars = patterns("Group"),
                              variable.name = "xPlot", 
                              value.name = "yPlot")
+    
 
   }
+  
+  summaryDT_melted[,'yPlot':= summaryDT_melted[,'yPlot']/60]
   
   return(summaryDT_melted)
 }
@@ -430,9 +439,12 @@ boutSleepLatencySummary <- function(graphs){
     
   }
   
-  if (any(is.nan(summaryDT_melted[,yPlot]))){
-    summaryDT_melted[which(is.nan(summaryDT_melted[,yPlot])),yPlot:=0]
-  }
+  # if (any(is.nan(summaryDT_melted[,yPlot]))){
+  #   summaryDT_melted[which(is.nan(summaryDT_melted[,yPlot])),yPlot:=0]
+  # }
+  
+  summaryDT_melted[,'yPlot':= summaryDT_melted[,'yPlot']/60]
+  
   return(summaryDT_melted)
 }
 boutSleepTimeSummary <- function(graphs){
@@ -548,7 +560,10 @@ boutSleepTimeSummary <- function(graphs){
     summaryDT_melted <- melt(summaryDT, measure.vars = patterns("Group"),
                              variable.name = "xPlot", 
                              value.name = "yPlot")
+
   }
+  
+  summaryDT_melted[,'yPlot':= summaryDT_melted[,'yPlot']/60]
   
   return(summaryDT_melted)
   
@@ -559,14 +574,24 @@ ActivityBoutsData <- function(graph = NaN, all=TRUE){
   
   if (all == TRUE){
     if (is.nan(graph) | graph == "BoutActivity"){
+      withProgress(message = 'Compute activity per bout statistics', value = 0, {
       BoutActivityData$lightDark <- boutActivitySummary("lightDark")
+      incProgress(1/3)
       BoutActivityData$day <- boutActivitySummary("day")
-      BoutActivityData$dayLightDark <- boutActivitySummary("dayLightDark")}
+      incProgress(1/3)
+      BoutActivityData$dayLightDark <- boutActivitySummary("dayLightDark")
+      incProgress(1/3)})
+    }
     
     if (is.nan(graph) | graph == "BoutTime"){
+      withProgress(message = 'Compute bout duration statistics', value = 0, {
       BoutTimeData$lightDark <- boutTimeSummary("lightDark")
+      incProgress(1/3)
       BoutTimeData$day <- boutTimeSummary("day")
-      BoutTimeData$dayLightDark <- boutTimeSummary("dayLightDark")}}
+      incProgress(1/3)
+      BoutTimeData$dayLightDark <- boutTimeSummary("dayLightDark")
+      incProgress(1/3)})
+      }}
   
   if (is.nan(graph) | graph == "BoutActivity"){
     BoutActivityData$custom <- boutActivitySummary("custom")}
@@ -577,13 +602,22 @@ SleepBoutsData <- function(graph = NaN, all=TRUE){
   
   if (all == TRUE){
     if (is.nan(graph) | graph == "BoutActivity"){
+      withProgress(message = 'Compute sleep bout duration statistics', value = 0, {
       BoutSleepTimeData$lightDark <- boutSleepTimeSummary("lightDark")
+      incProgress(1/3)
       BoutSleepTimeData$day <- boutSleepTimeSummary("day")
-      BoutSleepTimeData$dayLightDark <- boutSleepTimeSummary("dayLightDark")}
+      incProgress(1/3)
+      BoutSleepTimeData$dayLightDark <- boutSleepTimeSummary("dayLightDark")
+      incProgress(1/3)})
+      }
     
     if (is.nan(graph) | graph == "BoutTime"){
+      withProgress(message = 'Compute sleep latency statistics', value = 0, {
       BoutSleepLatencyData$all <- boutSleepLatencySummary("all")
-      BoutSleepLatencyData$day <- boutSleepLatencySummary("day")}}
+      incProgress(1/2)
+      BoutSleepLatencyData$day <- boutSleepLatencySummary("day")
+      incProgress(1/2)})
+      }}
   
   if (is.nan(graph) | graph == "BoutActivity"){
     BoutSleepTimeData$custom <- boutSleepTimeSummary("custom")}
@@ -595,15 +629,15 @@ SleepBoutsData <- function(graph = NaN, all=TRUE){
 #Activity bouts
 updateYBoutActivity <- function() {
   
-  if (input$boutActivityPlotsTabs == "Mean activity bouts"){
+  if (input$boutActivityPlotsTabs == "Activity per bout per light phase"){
     BoutActivityFigures$lightDark <- BoutActivityFigures$lightDark + coord_cartesian(ylim = input$yLimitsBoutActivity)
   }
   else{
-    if (input$boutActivityPlotsTabs == "Mean activity bouts per day"){
+    if (input$boutActivityPlotsTabs == "Activity per bout per day"){
       BoutActivityFigures$day <- BoutActivityFigures$day + coord_cartesian(ylim = input$yLimitsBoutActivity)
     }
     else{
-      if(input$boutActivityPlotsTabs == "Mean activity bouts daytime vs nighttime"){
+      if(input$boutActivityPlotsTabs == "Activity per bout per day and light phase"){
         BoutActivityFigures$dayLightDark <- BoutActivityFigures$dayLightDark + coord_cartesian(ylim = input$yLimitsBoutActivity)
       }
       else{
@@ -614,15 +648,15 @@ updateYBoutActivity <- function() {
 }
 updateYBoutTime<- function() {
   
-  if (input$boutTimePlotsTabs == "Mean bouts time"){
+  if (input$boutTimePlotsTabs == "Bout duration per light phase"){
     BoutTimeFigures$lightDark <- BoutTimeFigures$lightDark + coord_cartesian(ylim = input$yLimitsBoutTime)
   }
   else{
-    if (input$boutTimePlotsTabs == "Mean bouts time per day"){
+    if (input$boutTimePlotsTabs == "Bout duration per day"){
       BoutTimeFigures$day <- BoutTimeFigures$day + coord_cartesian(ylim = input$yLimitsBoutTime)
     }
     else{
-      if(input$boutTimePlotsTabs == "Mean bouts time daytime vs nighttime"){
+      if(input$boutTimePlotsTabs == "Bout duration per day and light phase"){
         BoutTimeFigures$dayLightDark <- BoutTimeFigures$dayLightDark + coord_cartesian(ylim = input$yLimitsBoutTime)
       }
       else{
@@ -635,15 +669,15 @@ updateYBoutTime<- function() {
 #Sleep bouts
 updateYSleepTime <- function() {
   
-  if (input$SleepTimePlotsTabs == "Mean sleep bout time"){
+  if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
     BoutSleepTimeFigures$lightDark <- BoutSleepTimeFigures$lightDark + coord_cartesian(ylim = input$yLimitsBoutSleepTime)
   }
   else{
-    if (input$SleepTimePlotsTabs == "Mean sleep bout time per day"){
+    if (input$SleepTimePlotsTabs == "Sleep bout duration per day"){
       BoutSleepTimeFigures$day <- BoutSleepTimeFigures$day + coord_cartesian(ylim = input$yLimitsBoutSleepTime)
     }
     else{
-      if(input$SleepTimePlotsTabs == "Mean sleep bout time daytime vs nighttime"){
+      if(input$SleepTimePlotsTabs == "Sleep bout duration per day and light phase"){
         BoutSleepTimeFigures$dayLightDark <- BoutSleepTimeFigures$dayLightDark + coord_cartesian(ylim = input$yLimitsBoutSleepTime)
       }
       else{
@@ -673,15 +707,15 @@ updateActivityBoutsLabels <- function(){
   BoutActivityFiguresXLabel(input$BoutActivityBoxXLabel)
   BoutActivityFiguresYLabel(input$BoutActivityBoxYLabel)
   
-  if (input$boutActivityPlotsTabs == "Mean activity bouts"){
+  if (input$boutActivityPlotsTabs == "Activity per bout per light phase"){
     BoutActivityFiguresTitles$lightDark <- input$BoutActivityBoxTitle
   }
   else{
-    if (input$boutActivityPlotsTabs == "Mean activity bouts per day"){
+    if (input$boutActivityPlotsTabs == "Activity per bout per day"){
       BoutActivityFiguresTitles$day <- input$BoutActivityBoxTitle
     }
     else{
-      if(input$boutActivityPlotsTabs == "Mean activity bouts daytime vs nighttime"){
+      if(input$boutActivityPlotsTabs == "Activity per bout per day and light phase"){
         BoutActivityFiguresTitles$dayLightDark <- input$BoutActivityBoxTitle
       }
       else{
@@ -693,15 +727,15 @@ updateActivityBoutsLabels <- function(){
   BoutTimeFiguresXLabel(input$BoutTimeBoxXLabel)
   BoutTimeFiguresYLabel(input$BoutTimeBoxYLabel)
   
-  if (input$boutTimePlotsTabs == "Mean bouts time"){
+  if (input$boutTimePlotsTabs == "Bout duration per light phase"){
     BoutTimeFiguresTitles$lightDark <- input$BoutTimeBoxTitle
   }
   else{
-    if (input$boutTimePlotsTabs == "Mean bouts time per day"){
+    if (input$boutTimePlotsTabs == "Bout duration per day"){
       BoutTimeFiguresTitles$day <- input$BoutTimeBoxTitle
     }
     else{
-      if(input$boutTimePlotsTabs == "Mean bouts time daytime vs nighttime"){
+      if(input$boutTimePlotsTabs == "Bout duration per day and light phase"){
         BoutTimeFiguresTitles$dayLightDark <- input$BoutTimeBoxTitle
       }
       else{
@@ -715,15 +749,15 @@ updateSleepBoutsLabels <- function(){
   BoutSleepTimeFiguresXLabel(input$SleepTimeBoxXLabel)
   BoutSleepTimeFiguresYLabel(input$SleepTimeBoxYLabel)
   
-  if (input$SleepTimePlotsTabs == "Mean sleep bout time"){
+  if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
     BoutSleepTimeFiguresTitles$lightDark <- input$SleepTimeBoxTitle
   }
   else{
-    if (input$SleepTimePlotsTabs == "Mean sleep bout time per day"){
+    if (input$SleepTimePlotsTabs == "Sleep bout duration per day"){
       BoutSleepTimeFiguresTitles$day <- input$SleepTimeBoxTitle
     }
     else{
-      if(input$SleepTimePlotsTabs == "Mean sleep bout time daytime vs nighttime"){
+      if(input$SleepTimePlotsTabs == "Sleep bout duration per day and light phase"){
         BoutSleepTimeFiguresTitles$dayLightDark <- input$SleepTimeBoxTitle
       }
       else{
@@ -767,7 +801,7 @@ updateBoutActivityDay <- function(){
   BoutActivityFigures$day <- fig
 }
 updateBoutActivityDayLightDark <- function(){
-  ##### Bout activity per day per light and dark phases figure #####
+  ##### Bout activity per day per light and dark phases figure 
   fig <- statisticPlots(BoutActivityData$dayLightDark ,input$boutPlot,input$boutError)+
     labs(title = BoutActivityFiguresTitles$dayLightDark, x = BoutActivityFiguresXLabel(),
          y = BoutActivityFiguresYLabel())
@@ -775,7 +809,7 @@ updateBoutActivityDayLightDark <- function(){
   BoutActivityFigures$dayLightDark <- fig
 }
 updateBoutActivityCustom <- function(){
-  ##### Bout activity custom figure #####
+  ##### Bout activity custom figure 
   fig <- statisticPlots(BoutActivityData$custom ,input$boutPlot,input$boutError)+
     labs(title = BoutActivityFiguresTitles$custom, x = BoutActivityFiguresXLabel(),
          y = BoutActivityFiguresYLabel())
@@ -786,10 +820,13 @@ updateBoutActivityCustom <- function(){
 updateBoutActivityFigures <- function (all=TRUE) {
   
   if (all == TRUE){
-    
+    withProgress(message = 'Activity per bout figures', value = 0, {
     updateBoutActivityLightDark()
+    incProgress(1/3)
     updateBoutActivityDay()
+    incProgress(1/3)
     updateBoutActivityDayLightDark()
+    incProgress(1/3)})
   }
   updateBoutActivityCustom()
   
@@ -797,7 +834,7 @@ updateBoutActivityFigures <- function (all=TRUE) {
 
 # Bout Time
 updateBoutTimeLightDark <- function(){
-  ##### Bout time per light and dark phases figure #####
+  ##### Bout time per light and dark phases figure 
   fig <- statisticPlots(BoutTimeData$lightDark ,input$boutPlot,input$boutError)+
     labs(title = BoutTimeFiguresTitles$lightDark, x = BoutTimeFiguresXLabel(),
          y = BoutTimeFiguresYLabel())
@@ -805,7 +842,7 @@ updateBoutTimeLightDark <- function(){
   BoutTimeFigures$lightDark <- fig
 }
 updateBoutTimeDay <- function(){
-  ##### Bout time per day #####
+  ##### Bout time per day 
   fig <- statisticPlots(BoutTimeData$day ,input$boutPlot,input$boutError)+
     labs(title = BoutTimeFiguresTitles$day, x = BoutTimeFiguresXLabel(),
          y = BoutTimeFiguresYLabel())
@@ -813,7 +850,7 @@ updateBoutTimeDay <- function(){
   BoutTimeFigures$day <- fig
 }
 updateBoutTimeDayLightDark <- function(){
-  ##### Bout time per day per light and dark phases figure #####
+  ##### Bout time per day per light and dark phases figure
   fig <- statisticPlots(BoutTimeData$dayLightDark ,input$boutPlot,input$boutError)+
     labs(title = BoutTimeFiguresTitles$dayLightDark, x = BoutTimeFiguresXLabel(),
          y = BoutTimeFiguresYLabel())
@@ -821,7 +858,7 @@ updateBoutTimeDayLightDark <- function(){
   BoutTimeFigures$dayLightDark <- fig
 }
 updateBoutTimeCustom <- function(){
-  ##### Bout time custom figure #####
+  ##### Bout time custom figure 
   fig <- statisticPlots(BoutTimeData$custom ,input$boutPlot,input$boutError)+
     labs(title = BoutTimeFiguresTitles$custom, x = BoutTimeFiguresXLabel(),
          y = BoutTimeFiguresYLabel())
@@ -832,10 +869,13 @@ updateBoutTimeCustom <- function(){
 updateBoutTimeFigures <- function (all=TRUE) {
   
   if (all == TRUE){
-    
+    withProgress(message = 'Bout duration figures', value = 0, {
     updateBoutTimeLightDark()
+    incProgress(1/3)
     updateBoutTimeDay()
+    incProgress(1/3)
     updateBoutTimeDayLightDark()
+    incProgress(1/3)})
   }
   updateBoutTimeCustom()
   
@@ -878,10 +918,13 @@ updateBoutSleepTimeCustom <- function(){
 updateBoutSleepTimeFigures <- function (all=TRUE) {
   
   if (all == TRUE){
-    
+    withProgress(message = 'Sleep bout duration figures', value = 0, {
     updateBoutSleepTimeLightDark()
+    incProgress(1/3)
     updateBoutSleepTimeDay()
+    incProgress(1/3)
     updateBoutSleepTimeDayLightDark()
+    incProgress(1/3)})
   }
   updateBoutSleepTimeCustom()
   
@@ -916,9 +959,11 @@ updateBoutSleepLatencyCustom <- function(){
 updateBoutSleepLatencyFigures <- function (all=TRUE) {
   
   if (all == TRUE){
-    
+    withProgress(message = 'Sleep latency figures', value = 0, {
     updateBoutSleepLatencyAll()
+    incProgress(1/2)
     updateBoutSleepLatencyDay()
+    incProgress(1/2)})
   }
   updateBoutSleepLatencyCustom()
   
@@ -929,6 +974,84 @@ updateBoutSleepLatencyFigures <- function (all=TRUE) {
 observeEvent(input$startanalysis,{
   req(damData$dt)
   req("timeDiff" %in% colnames(damData$dt))
+  
+  ### Bouts statistics
+  #Bout activity
+  BoutActivityData$lightDark <- NULL
+  BoutActivityData$day <- NULL
+  BoutActivityData$dayLightDark <- NULL
+  BoutActivityData$custom <- NULL
+  
+  BoutActivityFigures$lightDark <- NULL
+  BoutActivityFigures$day <- NULL
+  BoutActivityFigures$dayLightDark <- NULL
+  BoutActivityFigures$custom <- NULL
+  
+  BoutActivityFiguresTitles$lightDark <- "Mean activity per bout per light phase"
+  BoutActivityFiguresTitles$day <- "Mean activity per bout per day"
+  BoutActivityFiguresTitles$dayLightDark <- "Mean activity per bout day and per light phase"
+  BoutActivityFiguresTitles$custom <- "Mean activity per bout"
+  BoutActivityFiguresXLabel("")
+  BoutActivityFiguresYLabel("Mean activity per bout")
+  
+  #Bout time
+  BoutTimeData$lightDark <- NULL
+  BoutTimeData$day <- NULL
+  BoutTimeData$dayLightDark <- NULL
+  BoutTimeData$custom <- NULL
+  
+  BoutTimeFigures$lightDark <- NULL
+  BoutTimeFigures$day <- NULL
+  BoutTimeFigures$dayLightDark <- NULL
+  BoutTimeFigures$custom <- NULL
+  
+  BoutTimeFiguresTitles$lightDark <- "Mean bout duration per light phase"
+  BoutTimeFiguresTitles$day <- "Mean bout duration per day"
+  BoutTimeFiguresTitles$dayLightDark <- "Mean bout duration day and per light phase"
+  BoutTimeFiguresTitles$custom <- "Mean bout duration"
+  BoutTimeFiguresXLabel("")
+  BoutTimeFiguresYLabel("Mean bout duration")
+  
+  #Sleep bout time
+  BoutSleepTimeData$lightDark <- NULL
+  BoutSleepTimeData$day <- NULL
+  BoutSleepTimeData$dayLightDark <- NULL
+  BoutSleepTimeData$custom <- NULL
+  
+  BoutSleepTimeFigures$lightDark <- NULL
+  BoutSleepTimeFigures$day <- NULL
+  BoutSleepTimeFigures$dayLightDark <- NULL
+  BoutSleepTimeFigures$custom <- NULL
+  
+  BoutSleepTimeFiguresTitles$lightDark <- "Mean sleep bout duration per light phase"
+  BoutSleepTimeFiguresTitles$day <- "Mean sleep bout duration per day"
+  BoutSleepTimeFiguresTitles$dayLightDark <- "Mean sleep bout duration per day and per light phase"
+  BoutSleepTimeFiguresTitles$custom <- "Mean sleep bout duration"
+  BoutSleepTimeFiguresXLabel("")
+  BoutSleepTimeFiguresYLabel("Mean sleep bout duration")
+  
+  #Sleep latency
+  
+  BoutSleepLatencyData$all <- NULL
+  BoutSleepLatencyData$dayLightDark <- NULL
+  BoutSleepLatencyData$custom <- NULL
+  
+  BoutSleepLatencyFigures$all <- NULL
+  BoutSleepLatencyFigures$dayLightDark <- NULL
+  BoutSleepLatencyFigures$custom <- NULL
+  
+  BoutSleepLatencyFiguresTitles$all <- "Mean sleep latency"
+  BoutSleepLatencyFiguresTitles$dayLightDark <- "Mean sleep latency per day"
+  BoutSleepLatencyFiguresTitles$custom <- "Mean sleep latency"
+  BoutSleepLatencyFiguresXLabel("")
+  BoutSleepLatencyFiguresYLabel("Mean sleep latency")
+  
+  
+  #Clean data presented
+  output$BoutActivitySummary <- NULL
+  output$BoutTimeSummary <- NULL
+  output$SleepTimeSummary <- NULL
+  output$SleepLatencySummary <- NULL
   
   #Update bout analysis bin size
   if ((max(damData$dt[,'t'])-min(damData$dt[,'t']))/60 < 180){
@@ -1079,9 +1202,9 @@ observeEvent(input$boutAnalysis,{
   ActivityBoutsData()
   SleepBoutsData()
   
-  updateTabsetPanel(session, "boutActivityPlotsTabs", selected = "Mean activity bouts")
-  updateTabsetPanel(session, "boutTimePlotsTabs", selected = "Mean bouts time")
-  updateTabsetPanel(session, "SleepTimePlotsTabs", selected = "Mean sleep bout time")
+  updateTabsetPanel(session, "boutActivityPlotsTabs", selected = "Activity per bout per light phase")
+  updateTabsetPanel(session, "boutTimePlotsTabs", selected = "Bout duration per light phase")
+  updateTabsetPanel(session, "SleepTimePlotsTabs", selected = "Sleep bout duration per light phase")
   updateTabsetPanel(session, "SleepLatencyPlotsTabs", selected = "Sleep latency")
   
   #### Update Y range sliders
@@ -1130,17 +1253,17 @@ observeEvent(input$BoutActivitySummary_cell_edit,{
     return(boutActivity)
   }
   
-  if (input$boutActivityPlotsTabs == "Mean activity bouts"){
+  if (input$boutActivityPlotsTabs == "Activity per bout per light phase"){
     BoutActivityData$lightDark <- changeLabels(BoutActivityData$lightDark)
     updateBoutActivityLightDark()
   }
   else{
-    if (input$boutActivityPlotsTabs == "Mean activity bouts per day"){
+    if (input$boutActivityPlotsTabs == "Activity per bout per day"){
       BoutActivityData$day <- changeLabels(BoutActivityData$day)
       updateBoutActivityDay()
     }
     else{
-      if(input$boutActivityPlotsTabs == "Mean activity bouts daytime vs nighttime"){
+      if(input$boutActivityPlotsTabs == "Activity per bout per day and light phase"){
         BoutActivityData$dayLightDark <- changeLabels(BoutActivityData$dayLightDark)
         updateBoutActivityDayLightDark()
       }
@@ -1176,17 +1299,17 @@ observeEvent(input$BoutTimeSummary_cell_edit,{
     return(boutTime)
   }
   
-  if (input$boutTimePlotsTabs == "Mean bouts time"){
+  if (input$boutTimePlotsTabs == "Bout duration per light phase"){
     BoutTimeData$lightDark <- changeLabels(BoutTimeData$lightDark)
     updateBoutTimeLightDark()
   }
   else{
-    if (input$boutTimePlotsTabs == "Mean bouts time per day"){
+    if (input$boutTimePlotsTabs == "Bout duration per day"){
       BoutTimeData$day <- changeLabels(BoutTimeData$day)
       updateBoutTimeDay()
     }
     else{
-      if(input$boutTimePlotsTabs == "Mean bouts time daytime vs nighttime"){
+      if(input$boutTimePlotsTabs == "Bout duration per day and light phase"){
         BoutTimeData$dayLightDark <- changeLabels(BoutTimeData$dayLightDark)
         updateBoutTimeDayLightDark()
       }
@@ -1221,17 +1344,17 @@ observeEvent(input$SleepTimeSummary_cell_edit,{
     return(sleepTime)
   }
   
-  if (input$SleepTimePlotsTabs == "Mean sleep bout time"){
+  if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
     BoutSleepTimeData$lightDark <- changeLabels(BoutSleepTimeData$lightDark)
     updateBoutSleepTimeLightDark()
   }
   else{
-    if (input$SleepTimePlotsTabs == "Mean sleep bout time per day"){
+    if (input$SleepTimePlotsTabs == "Sleep bout duration per day"){
       BoutSleepTimeData$day <- changeLabels(BoutSleepTimeData$day)
       updateBoutSleepTimeDay()
     }
     else{
-      if(input$SleepTimePlotsTabs == "Mean sleep bout time daytime vs nighttime"){
+      if(input$SleepTimePlotsTabs == "Sleep bout duration per day and light phase"){
         BoutSleepTimeData$dayLightDark <- changeLabels(BoutSleepTimeData$dayLightDark)
         updateBoutSleepTimeDayLightDark()
       }
@@ -1292,15 +1415,15 @@ observe({
   req(nrow(damData$dt)>0)
   req(nrow(BoutActivityData$lightDark)>0)
   
-  if (input$boutActivityPlotsTabs == "Mean activity bouts"){
+  if (input$boutActivityPlotsTabs == "Activity per bout per light phase"){
     boutActivity <- BoutActivityData$lightDark
   }
   else{
-    if (input$boutActivityPlotsTabs == "Mean activity bouts per day"){
+    if (input$boutActivityPlotsTabs == "Activity per bout per day"){
       boutActivity <- BoutActivityData$day
     }
     else{
-      if(input$boutActivityPlotsTabs == "Mean activity bouts daytime vs nighttime"){
+      if(input$boutActivityPlotsTabs == "Activity per bout per day and light phase"){
         boutActivity <- BoutActivityData$dayLightDark
       }
       else{
@@ -1322,15 +1445,15 @@ observe({
   req(nrow(damData$dt)>0)
   req(nrow(BoutTimeData$lightDark)>0)
   
-  if (input$boutTimePlotsTabs == "Mean bouts time"){
+  if (input$boutTimePlotsTabs == "Bout duration per light phase"){
     boutTime <- BoutTimeData$lightDark
   }
   else{
-    if (input$boutTimePlotsTabs == "Mean bouts time per day"){
+    if (input$boutTimePlotsTabs == "Bout duration per day"){
       boutTime <- BoutTimeData$day
     }
     else{
-      if(input$boutTimePlotsTabs == "Mean bouts time daytime vs nighttime"){
+      if(input$boutTimePlotsTabs == "Bout duration per day and light phase"){
         boutTime <- BoutTimeData$dayLightDark
       }
       else{
@@ -1351,15 +1474,15 @@ observe({
   req(nrow(damData$dt)>0)
   req(nrow(BoutSleepTimeData$lightDark)>0)
   
-  if (input$SleepTimePlotsTabs == "Mean sleep bout time"){
+  if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
     sleepBoutTime <- BoutSleepTimeData$lightDark
   }
   else{
-    if (input$SleepTimePlotsTabs == "Mean sleep bout time per day"){
+    if (input$SleepTimePlotsTabs == "Sleep bout duration per day"){
       sleepBoutTime <- BoutSleepTimeData$day
     }
     else{
-      if(input$SleepTimePlotsTabs == "Mean sleep bout time daytime vs nighttime"){
+      if(input$SleepTimePlotsTabs == "Sleep bout duration per day and light phase"){
         sleepBoutTime <- BoutSleepTimeData$dayLightDark
       }
       else{
@@ -1450,15 +1573,15 @@ observeEvent(input$boutActivityPlotsTabs,{
   updateTextInput(session, "BoutActivityBoxXLabel", value = BoutActivityFiguresXLabel())
   updateTextInput(session, "BoutActivityBoxYLabel", value = BoutActivityFiguresYLabel())
   
-  if (input$boutActivityPlotsTabs == "Mean activity bouts"){
+  if (input$boutActivityPlotsTabs == "Activity per bout per light phase"){
     updateTextInput(session,"BoutActivityBoxTitle", value = BoutActivityFiguresTitles$lightDark)
   }
   else{
-    if (input$boutActivityPlotsTabs == "Mean activity bouts per day"){
+    if (input$boutActivityPlotsTabs == "Activity per bout per day"){
       updateTextInput(session,"BoutActivityBoxTitle", value = BoutActivityFiguresTitles$day)
     }
     else{
-      if(input$boutActivityPlotsTabs == "Mean activity bouts daytime vs nighttime"){
+      if(input$boutActivityPlotsTabs == "Activity per bout per day and light phase"){
         updateTextInput(session,"BoutActivityBoxTitle", value = BoutActivityFiguresTitles$dayLightDark)
       }
       else{
@@ -1475,15 +1598,15 @@ observeEvent(input$boutTimePlotsTabs,{
   updateTextInput(session, "BoutTimeBoxXLabel", value = BoutTimeFiguresXLabel())
   updateTextInput(session, "BoutTimeBoxYLabel", value = BoutTimeFiguresYLabel())
   
-  if (input$boutTimePlotsTabs == "Mean bouts time"){
+  if (input$boutTimePlotsTabs == "Bout duration per light phase"){
     updateTextInput(session,"BoutTimeBoxTitle", value = BoutTimeFiguresTitles$lightDark)
   }
   else{
-    if (input$boutTimePlotsTabs == "Mean bouts time per day"){
+    if (input$boutTimePlotsTabs == "Bout duration per day"){
       updateTextInput(session,"BoutTimeBoxTitle", value = BoutTimeFiguresTitles$day)
     }
     else{
-      if(input$boutTimePlotsTabs == "Mean bouts time daytime vs nighttime"){
+      if(input$boutTimePlotsTabs == "Bout duration per day and light phase"){
         updateTextInput(session,"BoutTimeBoxTitle", value = BoutTimeFiguresTitles$dayLightDark)
       }
       else{
@@ -1500,15 +1623,15 @@ observeEvent(input$SleepTimePlotsTabs,{
   updateTextInput(session, "SleepTimeBoxXLabel", value = BoutSleepTimeFiguresXLabel())
   updateTextInput(session, "SleepTimeBoxYLabel", value = BoutSleepTimeFiguresYLabel())
   
-  if (input$SleepTimePlotsTabs == "Mean sleep bout time"){
+  if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
     updateTextInput(session,"SleepTimeBoxTitle", value = BoutSleepTimeFiguresTitles$lightDark)
   }
   else{
-    if (input$SleepTimePlotsTabs == "Mean sleep bout time per day"){
+    if (input$SleepTimePlotsTabs == "Sleep bout duration per day"){
       updateTextInput(session,"SleepTimeBoxTitle", value = BoutSleepTimeFiguresTitles$day)
     }
     else{
-      if(input$SleepTimePlotsTabs == "Mean sleep bout time daytime vs nighttime"){
+      if(input$SleepTimePlotsTabs == "Sleep bout duration per day and light phase"){
         updateTextInput(session,"SleepTimeBoxTitle", value = BoutSleepTimeFiguresTitles$dayLightDark)
       }
       else{
@@ -1800,15 +1923,15 @@ observe({
     },
     content = function(file){
       
-      if (input$boutActivityPlotsTabs == "Mean activity bouts"){
+      if (input$boutActivityPlotsTabs == "Activity per bout per light phase"){
         fig <- BoutActivityFigures$lightDark
       }
       else{
-        if (input$boutActivityPlotsTabs == "Mean activity bouts per day"){
+        if (input$boutActivityPlotsTabs == "Activity per bout per day"){
           fig <- BoutActivityFigures$day
         }
         else{
-          if(input$boutActivityPlotsTabs == "Mean activity bouts daytime vs nighttime"){
+          if(input$boutActivityPlotsTabs == "Activity per bout per day and light phase"){
             fig <- BoutActivityFigures$dayLightDark
           }
           else{
@@ -1831,15 +1954,15 @@ observe({
     },
     content = function(file){
       
-      if (input$boutTimePlotsTabs == "Mean bouts time"){
+      if (input$boutTimePlotsTabs == "Bout duration per light phase"){
         fig <- BoutTimeFigures$lightDark
       }
       else{
-        if (input$boutTimePlotsTabs == "Mean bouts time per day"){
+        if (input$boutTimePlotsTabs == "Bout duration per day"){
           fig <- BoutTimeFigures$day
         }
         else{
-          if(input$boutTimePlotsTabs == "Mean bouts time daytime vs nighttime"){
+          if(input$boutTimePlotsTabs == "Bout duration per day and light phase"){
             fig <- BoutTimeFigures$dayLightDark
           }
           else{
@@ -1858,19 +1981,19 @@ observe({
   output$saveSleepLatencyFig <- downloadHandler(
 
     filename = function(){
-      paste0(input$SleepLatencyPlotsTabs,input$SleepLatencyFig)
+      paste0(input$SleepTimePlotsTabs,input$SleepLatencyFig)
     },
     content = function(file){
       
-      if (input$SleepTimePlotsTabs == "Mean sleep bout time"){
+      if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
         fig <- BoutSleepTimeFigures$lightDark
       }
       else{
-        if (input$SleepTimePlotsTabs == "Mean sleep bout time per day"){
+        if (input$SleepTimePlotsTabs == "Sleep bout duration per day"){
           fig <- BoutSleepTimeFigures$day
         }
         else{
-          if(input$SleepTimePlotsTabs == "Mean sleep bout time daytime vs nighttime"){
+          if(input$SleepTimePlotsTabs == "Sleep bout duration per day and light phase"){
             fig <- BoutSleepTimeFigures$dayLightDark
           }
           else{
@@ -1889,7 +2012,7 @@ observe({
   output$saveSleepTimeFig <- downloadHandler(
 
     filename = function(){
-      paste0(input$SleepTimePlotsTabs,input$SleepTimeFig)
+      paste0(input$SleepLatencyPlotsTabs,input$SleepTimeFig)
     },
     content = function(file){
       
@@ -1923,15 +2046,15 @@ observe({
     },
     content = function(file){
 
-      if (input$boutActivityPlotsTabs == "Mean activity bouts"){
+      if (input$boutActivityPlotsTabs == "Activity per bout per light phase"){
         data <- BoutActivityData$lightDark
       }
       else{
-        if (input$boutActivityPlotsTabs == "Mean activity bouts per day"){
+        if (input$boutActivityPlotsTabs == "Activity per bout per day"){
           data <- BoutActivityData$day
         }
         else{
-          if(input$boutActivityPlotsTabs == "Mean activity bouts daytime vs nighttime"){
+          if(input$boutActivityPlotsTabs == "Activity per bout per day and light phase"){
             data <- BoutActivityData$dayLightDark
           }
           else{
@@ -1984,15 +2107,15 @@ observe({
     },
     content = function(file){
 
-      if (input$boutTimePlotsTabs == "Mean bouts time"){
+      if (input$boutTimePlotsTabs == "Bout duration per light phase"){
         data <- BoutTimeData$lightDark
       }
       else{
-        if (input$boutTimePlotsTabs == "Mean bouts time per day"){
+        if (input$boutTimePlotsTabs == "Bout duration per day"){
           data <- BoutTimeData$day
         }
         else{
-          if(input$boutTimePlotsTabs == "Mean bouts time daytime vs nighttime"){
+          if(input$boutTimePlotsTabs == "Bout duration per day and light phase"){
             data <- BoutTimeData$dayLightDark
           }
           else{
@@ -2041,19 +2164,19 @@ observe({
   output$saveSleepTimeReport <- downloadHandler(
 
     filename = function(){
-      paste0(input$SleepLatencyPlotsTabs,".xlsx")
+      paste0(input$SleepTimePlotsTabs,".xlsx")
     },
     content = function(file){
       
-      if (input$SleepTimePlotsTabs == "Mean sleep bout time"){
+      if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
         data <- BoutSleepTimeData$lightDark
       }
       else{
-        if (input$SleepTimePlotsTabs == "Mean sleep bout time per day"){
+        if (input$SleepTimePlotsTabs == "Sleep bout duration per day"){
           data <- BoutSleepTimeData$day
         }
         else{
-          if(input$SleepTimePlotsTabs == "Mean sleep bout time daytime vs nighttime"){
+          if(input$SleepTimePlotsTabs == "Sleep bout duration per day and light phase"){
             data <- BoutSleepTimeData$dayLightDark
           }
           else{
@@ -2102,7 +2225,7 @@ observe({
   output$saveSleepLatencyReport <- downloadHandler(
 
     filename = function(){
-      paste0(input$SleepTimePlotsTabs,".xlsx")
+      paste0(input$SleepLatencyPlotsTabs,".xlsx")
     },
     content = function(file){
       

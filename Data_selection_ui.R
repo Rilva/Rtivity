@@ -14,10 +14,10 @@ div ( style = "background-color:#F5F5F5; padding: 10pt;
             ),
             
             column(4, 
-                   selectInput("selectedFile","File selection", choices = "-")),
+                   selectInput("selectedFile", "File selection", choices = "-")),
             
             column(3,
-                   fileInput("importConditions","Import metadata",accept = ".xlsx")
+                   fileInput("importConditions", "Import metadata",accept = ".xlsx")
             )
           ),
           
@@ -113,30 +113,34 @@ div ( style = "padding: 10pt; margin-top: 10px; font-size: 11pt",
                  style = "padding: 10pt; margin-top: 10px; font-size: 12pt",
                  
                  sidebarLayout(
-                   sidebarPanel(
+                   sidebarPanel(width = 5,
                      fluidRow(style="margin-top:10px",
                               
-                              column(7, numericInput('deadTime','Inactivity to consider death (h)' , 24)),
-                              
-                                        column(5, style = "margin-top:27px",
-                                     actionButton("remove","Find dead animals", style="border-style: none;
-                                                  font-size:11pt; border-radius: 5px; width: 100%"))),
+                              column(6, numericInput('deadTime','Inactivity to consider death (h)' , 12)),
+                              column(6, style = "margin-top:10px; margin-bottom:10px",
+                                     actionButton("evaluateDeath","Evaluate dead animals", class = "btn btn-success",
+                                     style="border-style: none;
+                                                  font-size:12pt; border-radius: 5px; width: 100%"))),
                      
                      fluidRow(DT::dataTableOutput("DeadTubes")),
                    
+                     fluidRow(
+                       column(style = "margin-bottom:27px", 2,
+                              downloadButton("saveDeath", "Save dead table"))),
+                     
                      fluidRow(style = "margin-top:20px",
-                       column(6,actionButton("deleteAnimals","Remove dead animals", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 
-                        border-style: none; color: white; font-size:11pt; border-radius: 5px; width:100%")),
                        column(6,actionButton("deleteInactivity","Remove inactivity data", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 
+                        border-style: none; color: white; font-size:11pt; border-radius: 5px; width:100%")),
+                       column(6,actionButton("deleteAnimals","Remove dead animals", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 
                         border-style: none; color: white; font-size:11pt; border-radius: 5px; width:100%")))),
                    
                  
-                   mainPanel(
+                   mainPanel(width = 7,
                      fluidRow(
-                              column(2,),
+                              column(1,),
                               
-                       column(3, style="margin-top:10px",
-                              checkboxInput("clean_data","Show data without inactivity")),
+                       column(4, style="margin-top:10px",
+                              checkboxInput("clean_data","Show death analysis")),
                        column(6,
                               radioButtons("Death_graphs","", c("All animals"="all", "Dead animals"="dead", "Live animals"="alive"), selected = "all", inline=TRUE)),
 
