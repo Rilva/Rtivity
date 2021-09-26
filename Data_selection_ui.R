@@ -117,7 +117,7 @@ div ( style = "padding: 10pt; margin-top: 10px; font-size: 11pt",
                      fluidRow(style="margin-top:10px",
                               
                               column(6, numericInput('deadTime','Inactivity to consider death (h)' , 12)),
-                              column(6, style = "margin-top:10px; margin-bottom:10px",
+                              column(6, style = "margin-top:27px; margin-bottom:10px",
                                      actionButton("evaluateDeath","Evaluate dead animals", class = "btn btn-success",
                                      style="border-style: none;
                                                   font-size:12pt; border-radius: 5px; width: 100%"))),

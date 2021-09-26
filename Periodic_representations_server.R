@@ -303,7 +303,7 @@ updateChronogram <- function() {
     fig <- fig + stat_pop_etho(method = input$errorChronogram) + scale_fill_manual(values = alpha(graphsAestethics$df[,'lineColor'], 0))
   }
   
-  title <- "Chronogram"
+  title <- "Full chronogram"
   x <-  paste0("Time (",input$xTime,")")
   y <- paste("Mean activity per",binSize(), "minutes")
   
@@ -333,7 +333,7 @@ updateChronogram24h <- function(){
     fig <- fig + stat_pop_etho(method = input$errorChronogram) + scale_fill_manual(values = alpha(graphsAestethics$df[,'lineColor'], 0))
   }
   
-  title <- "Daily chronogram"
+  title <- "Average LD cycle chronogram"
   x <-  paste0("Time (",input$xTime,")")
   y <- paste("Mean activity per",binSize(), "minutes")
   
@@ -486,13 +486,13 @@ updateLabels <- function(tab){
       FiguresYlabels$doublePlot <- input$yLabel
     }
     else{
-      if (tab == "Chronogram"){
+      if (tab == "Full chronogram"){
         FiguresTitles$chronogram <- input$graphTitle
         FiguresXlabels$ActivityAndSleep <- input$xLabel
         FiguresYlabels$activity <- input$yLabel
       }
       else{
-        if (tab == "Daily Chronogram"){
+        if (tab == "Average LD cycle chronogram"){
           FiguresTitles$chronogram24h <- input$graphTitle
           FiguresXlabels$ActivityAndSleep <- input$xLabel
           FiguresYlabels$activity <- input$yLabel
@@ -565,7 +565,7 @@ changeAestethics <- reactiveValues(selectedCondition = "None", selectedLine  = c
 
 
 Figures <- reactiveValues(actogram = NULL, doublePlot = NULL, chronogram = NULL, chronogram24h = NULL, periodogram = NULL, cumActivity = NULL, sleep = NULL)
-FiguresTitles <- reactiveValues(actogram = "Actogram", doublePlot = "Double Plot Actogram", chronogram = "Chronogram", chronogram24h = "Daily Chronogram", periodogram = "Periodogram", cumActivity = "Cumulative Activity", sleep = "Sleep Chronogram")
+FiguresTitles <- reactiveValues(actogram = "Actogram", doublePlot = "Double Plot Actogram", chronogram = "Full chronogram", chronogram24h = "Average LD cycle chronogram", periodogram = "Periodogram", cumActivity = "Cumulative Activity", sleep = "Sleep Chronogram")
 FiguresXlabels <- reactiveValues(ActivityAndSleep = paste0("Time (days)"), periodogram = "Period (h)")
 FiguresYlabels <- reactiveValues(activity = paste("Activity per 60 minutes"), doublePlot = "Period", periodogram = "Power", cumActivity = "Cumulative Activity", sleep = paste("Sleep ratio per 60 minutes"))
 
@@ -653,11 +653,11 @@ observeEvent(input$tabs,{
       y <- FiguresYlabels$doublePlot
     }
     else{
-      if (input$tabs == "Chronogram"){
+      if (input$tabs == "Full chronogram"){
         title <- FiguresTitles$chronogram
       }
       else{
-        if (input$tabs == "Daily Chronogram"){
+        if (input$tabs == "Average LD cycle chronogram"){
           title <- FiguresTitles$chronogram24h
         }
         else{
@@ -1027,7 +1027,7 @@ observeEvent(input$startanalysis,{
   PeriodicRepresentationsData()
   ActivityRepresentationsData()
   
-  updateTabsetPanel(session, 'tabs', selected = "Chronogram")
+  updateTabsetPanel(session, 'tabs', selected = "Full chronogram")
   updateTabsetPanel(session, 'tabs', selected = "Actogram")
 })
 
@@ -1317,11 +1317,11 @@ observe({
           fig <- Figures$doublePlot
         }
         else{
-          if (input$tabs == "Chronogram"){
+          if (input$tabs == "Full chronogram"){
             fig <- Figures$chronogram
           }
           else{
-            if (input$tabs == "Daily Chronogram"){
+            if (input$tabs == "Average LD cycle chronogram"){
               fig <- Figures$chronogram24h
             }
             else{

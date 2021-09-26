@@ -155,8 +155,8 @@ sidebarLayout(
     tabsetPanel(id = "tabs",
                 tabPanel("Actogram",plotOutput("actogram")),
                 tabPanel("Double plot actogram",plotOutput("doublePlotActogram")),
-                tabPanel("Chronogram", plotOutput("chronogram")),
-                tabPanel("Daily Chronogram", plotOutput("chronogram1day")),
+                tabPanel("Full chronogram", plotOutput("chronogram")),
+                tabPanel("Average LD cycle chronogram", plotOutput("chronogram1day")),
                 tabPanel("Periodogram", plotOutput("periodogram")),
                 tabPanel("Cumulative Activity", plotOutput("cumAct")),
                 tabPanel("Sleep Chronogram", plotOutput("sleep"))
