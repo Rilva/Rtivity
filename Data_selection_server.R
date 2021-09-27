@@ -1579,6 +1579,9 @@ observe({
       
       data <- DeadTableExport()
       
+      data[,2] <- as.character(data[,2])
+      data[,3] <- as.character(data[,3])
+      
       sheet <- createSheet(wb, "Dead Animals")
       addDataFrame(data, sheet=sheet, startColumn=1, row.names=FALSE)
   
