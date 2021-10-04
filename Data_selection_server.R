@@ -1387,6 +1387,8 @@ observeEvent(input$deleteAnimals,{
   disable("deleteAnimals")
   disable("evaluateDeath")
   
+  numberConditions <- length(unique(damData$dt[,'labels']))
+  
   withProgress(message = 'Removing dead animals', value = 0, {
     indexesToDelete <- channelsToRemove()
     
@@ -1426,7 +1428,10 @@ observeEvent(input$deleteAnimals,{
     channelsToRemove(c())
     
   })
-  graphsAestethics$df <- graphsAestethics$df[-nrow(graphsAestethics$df),]
+  
+  if (length(unique(damData$dt[,'labels'])) < numberConditions){
+    graphsAestethics$df <- graphsAestethics$df[-nrow(graphsAestethics$df),]}
+  
   MinTime(TRUE)
   updateSliderInput(session,"movingAverage",value = 60)
   
