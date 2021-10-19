@@ -615,7 +615,13 @@ observeEvent(input$sleepAnalysis2,{
   #get DAM data
   damData$dt[,"asleep" := sleep_dam_annotation(damData$dt[,1:3],min_time_immobile = 60*input$sleepTime2)[,'asleep']]
   
-  ActivityRepresentationsData()
+  settings <- settingsTable()
+  settings[1,2] <- l_period()
+  settings[2,2] <- l_hours()
+  settings[5,2] <- input$sleepTime2
+  settingsTable(settings)
+  
+  ActivityRepresentationsData(graph = "sleep")
   updateSleep()
   
   updateSliderInput(session,"sleepTime",value = input$sleepTime2)
@@ -794,6 +800,11 @@ observeEvent(input$updateActivitySleepStatistics,{
   
   updateActivityLabels()
   damData$dt[, 'activityBoxPlot_time' := floor(damData$dt[,'t']/(input$activityGroupBoxTime * l_period()*3600))]
+  
+  settings <- settingsTable()
+  settings[1,2] <- l_period()
+  settings[2,2] <- l_hours()
+  settingsTable(settings)
   
   withProgress(message = 'Update data and graphs', value = 0, {
     
@@ -1103,7 +1114,8 @@ observe({
       paste0(input$ActivityboxPlotsTabs,'.xlsx')
     },
     content = function(file){
-      #Create xlsx workbook of conditions and zeitgeber table
+      
+      wb <- createWorkbook(type="xlsx")
       
       if (input$ActivityboxPlotsTabs == "Activity per light phase"){
         data <- ActivityData$lightDark
@@ -1122,9 +1134,17 @@ observe({
         }
       }
       
+      
+      
+      settings <- rbind(settingsTable()[1:2,],settingsTable()[5,])
+      sheet <- createSheet(wb, "Settings")
+      addDataFrame(settings, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      sheet <- createSheet(wb, "Statistics")
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      
       animalsData <-  dataReport(data)
       
-      wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
       addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
       
@@ -1148,9 +1168,7 @@ observe({
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
       }
-      
-      sheet <- createSheet(wb, "Statistics")
-      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+    
 
       saveWorkbook(wb, file = file)
     })
@@ -1173,7 +1191,7 @@ observe({
     },
     content = function(file){
 
-      #Create xlsx workbook of conditions and zeitgeber table
+      wb <- createWorkbook(type="xlsx")
       
       if (input$SleepboxPlotsTabs == "Sleep ratio per light phase"){
         data <- SleepData$lightDark
@@ -1192,9 +1210,15 @@ observe({
         }
       }
       
+      settings <- rbind(settingsTable()[1:2,],settingsTable()[5,])
+      sheet <- createSheet(wb, "Settings")
+      addDataFrame(settings, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      sheet <- createSheet(wb, "Statistics")
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      
       animalsData <-  dataReport(data)
       
-      wb<-createWorkbook(type="xlsx")
       sheet <- createSheet(wb,"Replicates")
       addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
       
@@ -1218,8 +1242,6 @@ observe({
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
       }
-      sheet <- createSheet(wb, "Statistics")
-      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
 
       saveWorkbook(wb, file = file)
     })

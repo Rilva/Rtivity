@@ -63,7 +63,10 @@ div ( style = "padding: 10pt; margin-top: 10px; font-size: 11pt",
       
       #Conditions
       
+      tags$head(tags$style("#animals {font-size:18px; font-weight: bold}")),
       tabsetPanel(id="animals",
+                  
+                  
         tabPanel("Add Conditions",
                  
                  style = "padding: 10pt; margin-top: 10px; font-size: 12pt",
@@ -126,7 +129,7 @@ div ( style = "padding: 10pt; margin-top: 10px; font-size: 11pt",
                    
                      fluidRow(
                        column(style = "margin-bottom:27px", 2,
-                              downloadButton("saveDeath", "Save dead table"))),
+                              downloadButton("saveDeath", "Save death analysis"))),
                      
                      fluidRow(style = "margin-top:20px",
                        column(6,actionButton("deleteInactivity","Remove inactivity data", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 

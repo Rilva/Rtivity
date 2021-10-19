@@ -63,25 +63,27 @@ library(xlsx)
 
 shinyApp(
   
+  
+  
   ui <- navbarPage(id="pages",
                    theme = shinytheme("spacelab"),
                    
                    shinyjs::useShinyjs(),
+                   
   
   # Import and select data to analyse                   
                                     
-                   tabPanel("Data selection",
-                            
+                   tabPanel(title = "Data selection", 
+                      
+                            tags$head(tags$style(".navbar {font-size:22px; font-weight:bold; font-family: Arial}
+                                                 .nav-tabs {font-size:16px}")),
 
-                              h1("Rtivity", align = "center", style = "font-family: Roboto; font-size: 60px;
+                              h1("Rtivity", align = "center", style = "font-family: Cambria; font-size: 70px;
                            font-weight:bold "),
                            #
-                            h3("A versatile software for automated analysis of activity patterns in small organisms", align = "center", style = "font-family: Roboto; font-size: 30px;
+                            h3("A versatile software for the automated analysis of animal activity and sleep patterns", align = "center", style = "font-family: Cambria; font-size: 35px;
                            font-weight:bold;margin-bottom: 80px"),
                             
-                            HTML(
-                              '<h4><b> Select parameters for graphical analysis </b></h4>'
-                            ),
                             
                             source("Data_selection_ui.R", local=TRUE)[1]
                    ),
@@ -110,6 +112,11 @@ shinyApp(
     
     #Delete conditions function
     
+    session$onSessionEnded(function() {
+      stopApp()
+      q("no")
+    })
+
     deleteButtonColumn <- function(df, id, ...) {
       # function to create one action button as string
       f <- function(i) {

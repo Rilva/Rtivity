@@ -190,6 +190,7 @@ cleanData <- reactiveVal()
 Dead_noInactivity <- reactiveVal()
 Live_noInactivity <- reactiveVal()
 
+settingsTable <- reactiveVal()
 #############################################################################
 ############################## SESSION ######################################
 
@@ -236,6 +237,8 @@ observeEvent(input$files,{
   ZT(NULL)
   zt_table(NULL)
   deadTable(NULL)
+  DeadTableExport(NULL)
+  
   
   Directory(path)
     
@@ -381,6 +384,7 @@ observeEvent(input$l_period,{
   damData$dt[, 'activityBoxPlot_time' := floor(damData$dt[,'t']/(input$activityGroupBoxTime * l_period()*3600))]
   damData$dt[, 'boutBoxPlot_time' := floor(damData$dt[,'t']/(input$boutGroupBoxTime * l_period()*3600))]
   
+  
 })
 observeEvent(input$l_hours,{
   
@@ -393,6 +397,7 @@ observeEvent(input$l_hours,{
   damData$dt[, day_night := ((periodT-experimentDay*l_period()*3600)/3600)<l_hours()] #Day or night time
   damData$dt[, 'activityBoxPlot_time' := floor(damData$dt[,'t']/(input$activityGroupBoxTime * l_period()*3600))]
   damData$dt[, 'boutBoxPlot_time' := floor(damData$dt[,'t']/(input$boutGroupBoxTime * l_period()*3600))]
+  
 })
 
 ### Zeitgeber time data
@@ -648,7 +653,6 @@ observeEvent(changeDate(),{
   }
 })
 
-
 ################## CHANNELS PANEL ##################
 
 #Create channels datatable
@@ -747,7 +751,6 @@ observeEvent(input[['cbox94']],{
     col = paste0("cbox",j)
     updatePrettyCheckbox(session,paste0(col,i),paste(j+8*(i-1)),value)}
 })
-
 
 ################################# METADATA ##################################
 
@@ -886,9 +889,6 @@ output$Data <- DT::renderDataTable(
   editable  = list(target = 'cell',disable = list(columns = c(1,2,3,4,7))),
   option = list(ordering = TRUE, order = list(list(6,'asc'))))
 
-
-
-
 ############################# Start analysis ###################################
 
 #Import and analyse data
@@ -907,6 +907,7 @@ observeEvent(input$startanalysis,{
   disable('deleteInactivity')
   updateCheckboxInput(session, 'clean_data', value = FALSE)
   disable('clean_data')
+  disable("saveDeath")
   
   ##### Import data and create behavr tables
   
@@ -1018,6 +1019,18 @@ observeEvent(input$startanalysis,{
   damData$dt[, 'boutBoxPlot_time' := floor(damData$dt[,'t']/(input$boutGroupBoxTime * l_period()*3600))]
 
   enable("evaluateDeath")
+  
+  
+  Settings <- c("LD cycle (h)","Light hours per cycle (h)", "Bin size (min)", "Stop threshold (min)",
+                   "Sleep threshold (min)", "Periodogram function", "Resolution/Oversampling", "Minimum period (h)",
+                   "Maximum period (h)", "Death threshold (h)", "Remove all dead", "Remove dead individually", "Remove last inactivity")
+  
+  Values <- c(l_period(), l_hours(), input$movingAverage, input$boutWindow, 
+                 input$sleepTime, input$perFun, input$periodogramValue, input$minPer,
+                 input$maxPer,input$deadTime, FALSE, FALSE, FALSE)
+  
+  settingsTable(cbind(Settings,Values))
+  print(settingsTable)
 })
 
 ###################### UPDATE DATA BY CHANGES IN TABLE #######################
@@ -1132,6 +1145,9 @@ observeEvent(input$deletePressed, {
         break
       }
     }
+    settings <- settingsTable()
+    settings[12,2] <- TRUE
+    settingsTable(settings)
   }
   
   MinTime(TRUE)
@@ -1228,7 +1244,7 @@ observeEvent(input$evaluateDeath,{
   
   if (is.null(cleanData())){
     #Remove last inactivity period from animals
-    withProgress(message = 'Analyzing dead animals', value = 0, {
+    withProgress(message = 'Analyzing last inactivity', value = 0, {
       cleanData(curate_dead_animals(damData$dt,prop_immobile = 0,time_window = hours(20000), resolution = 20000))
       
       deadTable(NULL)
@@ -1237,6 +1253,7 @@ observeEvent(input$evaluateDeath,{
     })
   }
   
+  withProgress(message = 'Analyzing dead animals', value = 0, {
   # Get the final indexes of each replica
   if (nrow(tableData$df)>1){
     finalIndexes <- which(is.nan(damData$dt[,timeDiff]))-1
@@ -1283,6 +1300,9 @@ observeEvent(input$evaluateDeath,{
     
   }
   
+  TODs <- rep(NA,nrow(Conditions$df))
+  Survival_status <- rep("Survived",nrow(Conditions$df))
+  
   if (length(indexesToDelete)>0){
     
   
@@ -1307,27 +1327,14 @@ observeEvent(input$evaluateDeath,{
     }
     ids <- paste(Conditions$df[indexesToDelete,'start_datetime'],paste0(Conditions$df[indexesToDelete,'file']),paste_channels,sep="|")
     
-    TODs <- rep(NA,nrow(Conditions$df))
-    Outcome <- rep("Survived",nrow(Conditions$df))
+    
     
     #Time of death
     for (k in 1:length(ids)){
       timeAlive <- cleanData()[which(id == ids[k]),t]
       TODs[indexesToDelete[k]] <- dhms(timeAlive[length(timeAlive)])
-      Outcome[indexesToDelete[k]] <- 'Died'
+      Survival_status[indexesToDelete[k]] <- 'Died'
       ToD <- c(ToD, dhms(timeAlive[length(timeAlive)]))
-    }
-
-    LaT <- rep(NA,nrow(Conditions$df))
-    for(j in 1:nrow(Conditions$df)){
-      if (Conditions$df[j,'region_id']<10)
-        paste_channel <- paste0('0',Conditions$df[j,'region_id'])
-      else
-        paste_channel <- Conditions$df[j,'region_id']
-
-      identifier <- paste(Conditions$df[j,'start_datetime'],paste0(Conditions$df[j,'file']),paste_channel,sep="|")
-      time <- cleanData()[which(id == identifier),t]
-      LaT[j] <- dhms(time[length(time)])
     }
     
     Time_of_death <- ToD
@@ -1350,6 +1357,23 @@ observeEvent(input$evaluateDeath,{
     shinyjs::enable('deleteInactivity')
     shinyjs::enable('deleteAnimals')
     
+  }
+  else{
+    deadTable(data.frame(NULL))
+  }
+  
+  LaT <- rep(NA,nrow(Conditions$df))
+  for(j in 1:nrow(Conditions$df)){
+    if (Conditions$df[j,'region_id']<10)
+      paste_channel <- paste0('0',Conditions$df[j,'region_id'])
+    else
+      paste_channel <- Conditions$df[j,'region_id']
+    
+    identifier <- paste(Conditions$df[j,'start_datetime'],paste0(Conditions$df[j,'file']),paste_channel,sep="|")
+    time <- cleanData()[which(id == identifier),t]
+    LaT[j] <- dhms(time[length(time)])
+  }
+
     Time_of_death <- TODs
     Last_activity_timepoint <- LaT
     
@@ -1361,12 +1385,14 @@ observeEvent(input$evaluateDeath,{
     Labels <- Conditions$df[,5]
     
     #Data table export
-    DeadTableExport(data.frame(Files, Start_time, End_time, Channels, Labels, Outcome, Time_of_death, Last_activity_timepoint))
-  }
-  else{
-    deadTable(NULL)
-  }
-  
+    DeadTableExport(data.frame(Files, Start_time, End_time, Channels, Labels, Survival_status, Time_of_death, Last_activity_timepoint))
+  # }
+
+
+  settings <- settingsTable()
+  settings[10,2] <- input$deadTime
+  settingsTable(settings)
+  })
   
 })
 
@@ -1429,6 +1455,10 @@ observeEvent(input$deleteAnimals,{
     
   })
   
+  settings <- settingsTable()
+  settings[11,2] <- TRUE
+  settingsTable(settings)
+  
   if (length(unique(damData$dt[,'labels'])) < numberConditions){
     graphsAestethics$df <- graphsAestethics$df[-nrow(graphsAestethics$df),]}
   
@@ -1472,6 +1502,10 @@ observeEvent(input$deleteInactivity,{
   disable("clean_data")
   disable("deleteInactivity")
   disable('deleteAnimals')
+  
+  settings <- settingsTable()
+  settings[13,2] <- TRUE
+  settingsTable(settings)
   
   updateFigures()
   
@@ -1565,9 +1599,9 @@ res = 96)
 
 #Save dead table
 observe({
-  req(nrow(deadTable())>0)
+  req(nrow(DeadTableExport())>0)
   
-  if (nrow(deadTable())>0){
+  if (nrow(DeadTableExport())>0){
     shinyjs::enable("saveDeath")
   }
   else{
@@ -1581,6 +1615,10 @@ observe({
     content = function(file){
   
       wb <- createWorkbook(type="xlsx")
+      
+      settings <- settingsTable()[10:13,]
+      sheet <- createSheet(wb, "Settings")
+      addDataFrame(settings, sheet=sheet, startColumn=1, row.names=FALSE)
       
       data <- DeadTableExport()
       

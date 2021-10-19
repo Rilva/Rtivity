@@ -619,6 +619,13 @@ observeEvent(input$sleepAnalysis,{
   
   updateSliderInput(session,"sleepTime2",value = input$sleepTime)
   
+  settings <- settingsTable()
+  settings[1,2] <- l_period()
+  settings[2,2] <- l_hours()
+  settings[3,2] <- input$movingAverage
+  settings[5,2] <- input$sleepTime
+  settingsTable(settings)
+  
   req(SleepFigures$lightDark)
   
   ActivityAndSleepData(graph='sleep')
@@ -634,8 +641,18 @@ observeEvent(input$sleepAnalysis,{
 #Change periodogram data
 observeEvent(input$periodogramAnalysis,{
   req(damData$dt)
-  updatePeriodogram()
-  PeriodicRepresentationsData()
+  
+  settings <- settingsTable()
+  settings[6,2] <- input$perFun
+  settings[7,2] <- input$periodogramValue
+  settings[8,2] <- input$minPer
+  settings[9,2] <- input$maxPer
+  settingsTable(settings)
+  
+  withProgress(message = 'Periodogram analysis analysis', value = 0, {
+    updatePeriodogram()
+    PeriodicRepresentationsData()
+  })
 })
 
 observeEvent(input$tabs,{
@@ -828,48 +845,43 @@ observe({
 ########################### Statistical Data ##############################
 
 #Statistics Data
-ActivityRepresentationsData <- function(){
+ActivityRepresentationsData <- function(graph = 'all'){
   
   req(damData$dt)
   
   withProgress(message = 'Actogram and Chronogram analysis', value = 0, {
     ##### Calculate activity and sleep data #####
     
-    # damData$dt[,timeDiff := c(NaN,damData$dt[2:nrow(damData$dt),t]- damData$dt[1:(nrow(damData$dt)-1),t])]
-    
-    File <- c()
-    Labels <- c()
-    Order <- c()
-    Channels <- c()
-    Start_date <- c()
-    End_date <- c()
-    Time_min <- c()
-    Activity <- c()
-    Cumulative_activity <- c()
-    Asleep <- c()
-    
-    step <- binSize() /(max(damData$dt[,timeDiff],na.rm=TRUE)/60)
-    
-    if (nrow(damData$dt[,,meta=T])>1){
-      start <- which(is.nan(damData$dt[,timeDiff]))
-      end <- c(start[2:length(start)]-1,nrow(damData$dt))
-    }
-    else{
-      start <- 1
-      end <- nrow(damData$dt)
-    }
-    
-    # From data frame to vector
-    time <- damData$dt[,'periodT']
-    activity <- damData$dt[,'activity']
-    cumActivity <- damData$dt[,'auc']
-    sleep <- damData$dt[,'asleep']
-    sleep <- sleep*1
-
-    for (i in 1:length(start)){
+    if (graph == "sleep"){
+      File <- c()
+      Labels <- c()
+      Order <- c()
+      Channels <- c()
+      Start_date <- c()
+      End_date <- c()
+      Time_min <- c()
+      Asleep <- c()
+      
+      step <- binSize() /(max(damData$dt[,timeDiff],na.rm=TRUE)/60)
+      
+      if (nrow(damData$dt[,,meta=T])>1){
+        start <- which(is.nan(damData$dt[,timeDiff]))
+        end <- c(start[2:length(start)]-1,nrow(damData$dt))
+      }
+      else{
+        start <- 1
+        end <- nrow(damData$dt)
+      }
+      
+      # From data frame to vector
+      time <- damData$dt[,'periodT']
+      sleep <- damData$dt[,'asleep']
+      sleep <- sleep*1
+      
+      for (i in 1:length(start)){
         cond <- rep(FALSE,end[i]-step-start[i]+1)
         cond[seq(1,end[i]-start[i]-step+1,step)]<-TRUE
-          
+        
         incProgress(1/length(start)) #Increment of progress bar
         
         #How many repetitions  
@@ -884,63 +896,144 @@ ActivityRepresentationsData <- function(){
         
         for (j in 1:length(indexes)){
           Time_min <- c(Time_min,(time[indexes[j]]$periodT))
-          Activity <- c(Activity,sum(activity[indexes[j]:(indexes[j]+step-1)]))
-          Cumulative_activity <- c(Cumulative_activity,max(cumActivity[indexes[j]:(indexes[j]+step-1)]))
           Asleep <- c(Asleep,sum(sleep[indexes[j]:(indexes[j]+step-1)])/(step))
         }
+      }
+      
+      PeriodicData$sleep <- data.frame(File,Labels,Channels,Start_date,End_date, Time_min, Asleep)
+      
+      ##### Organize data in sleep per animal #####
+      
+      ids <- unique(interaction(File,Labels,Channels,sep = "//"))
+      
+      File <- str_split_fixed(ids, "//",3)[,1]
+      Labels <- str_split_fixed(ids, "//",3)[,2]
+      Channels <- str_split_fixed(ids, "//",3)[,3]
+      
+      Asleep <- round(aggregate(Asleep ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$sleep, FUN=mean)[,2],3)
+      
+      df <- data.frame(File,Labels,Channels,Asleep)
+      
+      #Statistics
+      Conditions <- aggregate(Asleep ~ Labels, data=df, FUN=length)[,1]
+      N  <- aggregate(Asleep ~ Labels, data=df, FUN=length)[,2]
+      Sleep_Mean <- round(aggregate(Asleep ~ Labels, data=df, FUN=mean)[,2],3)
+      Sleep_SEM <- round(aggregate(Asleep ~ Labels, data=df, FUN=se)[,2],3)
+      Sleep_SD <- round(aggregate(Asleep ~ Labels, data=df, FUN=sd)[,2],3)
+      Sleep_Median <- round(aggregate(Asleep ~ Labels, data=df, FUN=median)[,2],3)
+      Sleep_25Q  <- round(aggregate(Asleep ~ Labels, data=df, FUN=quantile)[,2][,2],3)
+      Sleep_75Q  <- round(aggregate(Asleep ~ Labels, data=df, FUN=quantile)[,2][,4],3)
+      
+      PeriodicStatistics$sleep <- data.frame(Conditions, N, Sleep_Mean, Sleep_SEM, Sleep_SD, Sleep_Median, Sleep_25Q, Sleep_75Q)
+      
     }
+    else{
     
-    PeriodicData$activity <- data.frame(File,Labels,Channels,Start_date,End_date, Time_min, Activity)
-    PeriodicData$cumActivity <- data.frame(File,Labels,Channels,Start_date,End_date, Time_min, Cumulative_activity)
-    PeriodicData$sleep <- data.frame(File,Labels,Channels,Start_date,End_date, Time_min, Asleep)
+      File <- c()
+      Labels <- c()
+      Order <- c()
+      Channels <- c()
+      Start_date <- c()
+      End_date <- c()
+      Time_min <- c()
+      Activity <- c()
+      Cumulative_activity <- c()
+      Asleep <- c()
+      
+      step <- binSize() /(max(damData$dt[,timeDiff],na.rm=TRUE)/60)
+      
+      if (nrow(damData$dt[,,meta=T])>1){
+        start <- which(is.nan(damData$dt[,timeDiff]))
+        end <- c(start[2:length(start)]-1,nrow(damData$dt))
+      }
+      else{
+        start <- 1
+        end <- nrow(damData$dt)
+      }
+      
+      # From data frame to vector
+      time <- damData$dt[,'periodT']
+      activity <- damData$dt[,'activity']
+      cumActivity <- damData$dt[,'auc']
+      sleep <- damData$dt[,'asleep']
+      sleep <- sleep*1
+  
+      for (i in 1:length(start)){
+          cond <- rep(FALSE,end[i]-step-start[i]+1)
+          cond[seq(1,end[i]-start[i]-step+1,step)]<-TRUE
+            
+          incProgress(1/length(start)) #Increment of progress bar
+          
+          #How many repetitions  
+          n <- length(which(cond==TRUE))
+          indexes <- which(cond==TRUE)+start[i]-1
+          
+          File <-c(File,rep(damData$dt[start[i],file],n))
+          Labels <- c(Labels,rep(damData$dt[start[i],labels],n))
+          Channels <- c(Channels, rep(damData$dt[start[i],channels],n))
+          Start_date <- c(Start_date, rep(damData$dt[,start_datetime,meta=T][i],n))
+          End_date <- c(End_date, rep(damData$dt[,stop_datetime,meta=T][i],n))
+          
+          for (j in 1:length(indexes)){
+            Time_min <- c(Time_min,(time[indexes[j]]$periodT))
+            Activity <- c(Activity,sum(activity[indexes[j]:(indexes[j]+step-1)]))
+            Cumulative_activity <- c(Cumulative_activity,max(cumActivity[indexes[j]:(indexes[j]+step-1)]))
+            Asleep <- c(Asleep,sum(sleep[indexes[j]:(indexes[j]+step-1)])/(step))
+          }
+      }
     
-    ##### Organize data in activity per animal #####
     
-    ids <- unique(interaction(File,Labels,Channels,sep = "//"))
-    
-    File <- str_split_fixed(ids, "//",3)[,1]
-    Labels <- str_split_fixed(ids, "//",3)[,2]
-    Channels <- str_split_fixed(ids, "//",3)[,3]
-
-    Activity <- round(aggregate(Activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$activity, FUN=mean)[,2],3)
-    MaxActivity <- aggregate(Activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$activity, FUN=max)[,2]
-    MinActivity <- aggregate(Activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$activity, FUN=min)[,2]
-    AUC <- aggregate(Cumulative_activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$cumActivity, FUN=max)[,2]
-    Asleep <- round(aggregate(Asleep ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$sleep, FUN=mean)[,2],3)
-    
-    df <- data.frame(File,Labels,Channels,Activity,MaxActivity,MinActivity,AUC,Asleep)
-    
-    #### Activity and Sleep Statistics #####
-    
-    Conditions <- aggregate(Activity ~ Labels, data=df, FUN=length)[,1]
-    N  <- aggregate(Activity ~ Labels, data=df, FUN=length)[,2]
-    Activity_Mean <- round(aggregate(Activity ~ Labels, data=df, FUN=mean)[,2],3)
-    Activity_SEM <- round(aggregate(Activity ~ Labels, data=df, FUN=se)[,2],3)
-    Activity_Max <- round(aggregate(MaxActivity ~ Labels, data=df, FUN=mean)[,2],3)
-    Activity_Max_SEM <- round(aggregate(MaxActivity ~ Labels, data=df, FUN=se)[,2],3)
-    Activity_Min  <- round(aggregate(MinActivity ~ Labels, data=df, FUN=mean)[,2],3)
-    Activity_Min_SEM  <- round(aggregate(MinActivity ~ Labels, data=df, FUN=se)[,2],3)
-    
-    PeriodicStatistics$activity <- data.frame(Conditions, N, Activity_Mean, Activity_SEM, Activity_Max, Activity_Max_SEM, Activity_Min, Activity_Min_SEM)
-    
-    Sleep_Mean <- round(aggregate(Asleep ~ Labels, data=df, FUN=mean)[,2],3)
-    Sleep_SEM <- round(aggregate(Asleep ~ Labels, data=df, FUN=se)[,2],3)
-    Sleep_SD <- round(aggregate(Asleep ~ Labels, data=df, FUN=sd)[,2],3)
-    Sleep_Median <- round(aggregate(Asleep ~ Labels, data=df, FUN=median)[,2],3)
-    Sleep_25Q  <- round(aggregate(Asleep ~ Labels, data=df, FUN=quantile)[,2][,2],3)
-    Sleep_75Q  <- round(aggregate(Asleep ~ Labels, data=df, FUN=quantile)[,2][,4],3)
-    
-    PeriodicStatistics$sleep <- data.frame(Conditions, N, Sleep_Mean, Sleep_SEM, Sleep_SD, Sleep_Median, Sleep_25Q, Sleep_75Q)
-    
-    CumActivity_Max_Mean <- round(aggregate(AUC ~ Labels, data=df, FUN=mean)[,2],3)
-    CumActivity_Max_SEM <- round(aggregate(AUC ~ Labels, data=df, FUN=se)[,2],3)
-    CumActivity_Max_SD <- round(aggregate(AUC ~ Labels, data=df, FUN=sd)[,2],3)
-    CumActivity_Max_Median <- round(aggregate(AUC ~ Labels, data=df, FUN=median)[,2],3)
-    CumActivity_Max_25Q  <- round(aggregate(AUC ~ Labels, data=df, FUN=quantile)[,2][,2],3)
-    CumActivity_Max_75Q  <- round(aggregate(AUC ~ Labels, data=df, FUN=quantile)[,2][,4],3)
-    
-    PeriodicStatistics$cumActivity <- data.frame(Conditions, N, CumActivity_Max_Mean, CumActivity_Max_SEM, CumActivity_Max_SD, CumActivity_Max_Median, CumActivity_Max_25Q, CumActivity_Max_75Q)
-    
+      PeriodicData$activity <- data.frame(File,Labels,Channels,Start_date,End_date, Time_min, Activity)
+      PeriodicData$cumActivity <- data.frame(File,Labels,Channels,Start_date,End_date, Time_min, Cumulative_activity)
+      PeriodicData$sleep <- data.frame(File,Labels,Channels,Start_date,End_date, Time_min, Asleep)
+      
+      ##### Organize data in activity per animal #####
+      
+      ids <- unique(interaction(File,Labels,Channels,sep = "//"))
+      
+      File <- str_split_fixed(ids, "//",3)[,1]
+      Labels <- str_split_fixed(ids, "//",3)[,2]
+      Channels <- str_split_fixed(ids, "//",3)[,3]
+  
+      Activity <- round(aggregate(Activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$activity, FUN=mean)[,2],3)
+      MaxActivity <- aggregate(Activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$activity, FUN=max)[,2]
+      MinActivity <- aggregate(Activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$activity, FUN=min)[,2]
+      AUC <- aggregate(Cumulative_activity ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$cumActivity, FUN=max)[,2]
+      Asleep <- round(aggregate(Asleep ~ interaction(File,Labels,Channels,sep=" - "), data=PeriodicData$sleep, FUN=mean)[,2],3)
+      
+      df <- data.frame(File,Labels,Channels,Activity,MaxActivity,MinActivity,AUC,Asleep)
+      
+      #### Activity and Sleep Statistics #####
+      
+      Conditions <- aggregate(Activity ~ Labels, data=df, FUN=length)[,1]
+      N  <- aggregate(Activity ~ Labels, data=df, FUN=length)[,2]
+      Activity_Mean <- round(aggregate(Activity ~ Labels, data=df, FUN=mean)[,2],3)
+      Activity_SEM <- round(aggregate(Activity ~ Labels, data=df, FUN=se)[,2],3)
+      Activity_Max <- round(aggregate(MaxActivity ~ Labels, data=df, FUN=mean)[,2],3)
+      Activity_Max_SEM <- round(aggregate(MaxActivity ~ Labels, data=df, FUN=se)[,2],3)
+      Activity_Min  <- round(aggregate(MinActivity ~ Labels, data=df, FUN=mean)[,2],3)
+      Activity_Min_SEM  <- round(aggregate(MinActivity ~ Labels, data=df, FUN=se)[,2],3)
+      
+      PeriodicStatistics$activity <- data.frame(Conditions, N, Activity_Mean, Activity_SEM, Activity_Max, Activity_Max_SEM, Activity_Min, Activity_Min_SEM)
+      
+      Sleep_Mean <- round(aggregate(Asleep ~ Labels, data=df, FUN=mean)[,2],3)
+      Sleep_SEM <- round(aggregate(Asleep ~ Labels, data=df, FUN=se)[,2],3)
+      Sleep_SD <- round(aggregate(Asleep ~ Labels, data=df, FUN=sd)[,2],3)
+      Sleep_Median <- round(aggregate(Asleep ~ Labels, data=df, FUN=median)[,2],3)
+      Sleep_25Q  <- round(aggregate(Asleep ~ Labels, data=df, FUN=quantile)[,2][,2],3)
+      Sleep_75Q  <- round(aggregate(Asleep ~ Labels, data=df, FUN=quantile)[,2][,4],3)
+      
+      PeriodicStatistics$sleep <- data.frame(Conditions, N, Sleep_Mean, Sleep_SEM, Sleep_SD, Sleep_Median, Sleep_25Q, Sleep_75Q)
+      
+      CumActivity_Max_Mean <- round(aggregate(AUC ~ Labels, data=df, FUN=mean)[,2],3)
+      CumActivity_Max_SEM <- round(aggregate(AUC ~ Labels, data=df, FUN=se)[,2],3)
+      CumActivity_Max_SD <- round(aggregate(AUC ~ Labels, data=df, FUN=sd)[,2],3)
+      CumActivity_Max_Median <- round(aggregate(AUC ~ Labels, data=df, FUN=median)[,2],3)
+      CumActivity_Max_25Q  <- round(aggregate(AUC ~ Labels, data=df, FUN=quantile)[,2][,2],3)
+      CumActivity_Max_75Q  <- round(aggregate(AUC ~ Labels, data=df, FUN=quantile)[,2][,4],3)
+      
+      PeriodicStatistics$cumActivity <- data.frame(Conditions, N, CumActivity_Max_Mean, CumActivity_Max_SEM, CumActivity_Max_SD, CumActivity_Max_Median, CumActivity_Max_25Q, CumActivity_Max_75Q)
+    }
   })
 }
 PeriodicRepresentationsData <- function(){
@@ -1036,13 +1129,15 @@ observeEvent(input$startanalysis,{
 observeEvent(input$updateAesthetics,{
   req(damData$dt)
   
+  settings <- settingsTable()
+  settings[1,2] <- l_period()
+  settings[2,2] <- l_hours()
+  settingsTable(settings)
+  
     update_periodT()
     
     updateLabels(input$tabs)
     updateFigures()
-    
-    PeriodicRepresentationsData()
-    ActivityRepresentationsData()
     
     updateActivityFigures()
     updateSleepFigures()
@@ -1196,6 +1291,20 @@ output$saveData <- downloadHandler(
     
     if (input$tabs == "Periodogram"){
       
+      settings <- settingsTable()[6:9,]
+      if(settings[1,2] == "ls"){
+        settings[1,2] <- "Lomb-Scargle"
+        settings[2,1] <- "Oversampling"}
+      else{
+        settings[1,2] <- "Chi-square"
+        settings[2,1] <- "Resolution (h)"
+      }
+      sheet <- createSheet(wb, "Settings")
+      addDataFrame(settings, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      sheet <- createSheet(wb, "Statistics")
+      addDataFrame(PeriodicStatistics$periodogram, sheet=sheet, startColumn=1, row.names=FALSE)
+      
       sheet <- createSheet(wb, "Animals")
       addDataFrame(PeriodicData$periodogram, sheet=sheet, startColumn=1, row.names=FALSE)
       
@@ -1223,9 +1332,6 @@ output$saveData <- downloadHandler(
       addDataFrame(periodData, sheet=sheet, startColumn=1, row.names=FALSE)
       sheet <- createSheet(wb, "Power")
       addDataFrame(powerData, sheet=sheet, startColumn=1, row.names=FALSE)
-        
-      sheet <- createSheet(wb, "Statistics")
-      addDataFrame(PeriodicStatistics$periodogram, sheet=sheet, startColumn=1, row.names=FALSE)
     }
     else{
         
@@ -1250,6 +1356,14 @@ output$saveData <- downloadHandler(
         }
       }
         
+      
+      settings <- rbind(settingsTable()[1:3,],settingsTable()[5,])
+      sheet <- createSheet(wb, "Settings")
+      addDataFrame(settings, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      sheet = createSheet(wb, "Statistics")
+      addDataFrame(statistics, sheet=sheet, startColumn=1, row.names=FALSE)
+      
       # Create sheets
       Labels <- data[,'Labels']
       uniqueLabels <- unique(Labels)
@@ -1283,9 +1397,6 @@ output$saveData <- downloadHandler(
       sheet <- createSheet(wb, "Summary")
       addDataFrame(summaryData, sheet=sheet, startColumn=1, row.names=FALSE)
         
-        
-      sheet = createSheet(wb, "Statistics")
-      addDataFrame(statistics, sheet=sheet, startColumn=1, row.names=FALSE)
       }
       
     saveWorkbook(wb, file)
