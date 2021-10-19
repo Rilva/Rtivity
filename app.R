@@ -112,10 +112,10 @@ shinyApp(
     
     #Delete conditions function
     
-    session$onSessionEnded(function() {
-      stopApp()
-      q("no")
-    })
+    # session$onSessionEnded(function() {
+    #   stopApp()
+    #   q("no")
+    # })
 
     deleteButtonColumn <- function(df, id, ...) {
       # function to create one action button as string
