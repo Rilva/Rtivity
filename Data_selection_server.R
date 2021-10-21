@@ -1030,7 +1030,6 @@ observeEvent(input$startanalysis,{
                  input$maxPer,input$deadTime, FALSE, FALSE, FALSE)
   
   settingsTable(cbind(Settings,Values))
-  print(settingsTable)
 })
 
 ###################### UPDATE DATA BY CHANGES IN TABLE #######################

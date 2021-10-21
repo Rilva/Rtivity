@@ -1355,8 +1355,6 @@ output$saveData <- downloadHandler(
           statistics  <- PeriodicStatistics$activity
         }
       }
-      
-      print(data[,4])
         
       data[,4] <- as.character(data[,4])
       data[,5] <- as.character(data[,5])
