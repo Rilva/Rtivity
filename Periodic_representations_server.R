@@ -971,8 +971,8 @@ ActivityRepresentationsData <- function(graph = 'all'){
           File <-c(File,rep(damData$dt[start[i],file],n))
           Labels <- c(Labels,rep(damData$dt[start[i],labels],n))
           Channels <- c(Channels, rep(damData$dt[start[i],channels],n))
-          Start_date <- c(Start_date, rep(damData$dt[,start_datetime,meta=T][i],n))
-          End_date <- c(End_date, rep(damData$dt[,stop_datetime,meta=T][i],n))
+          Start_date <- c(Start_date, rep(as.character(damData$dt[,start_datetime,meta=T][i]),n))
+          End_date <- c(End_date, rep(as.character(damData$dt[,stop_datetime,meta=T][i]),n))
           
           for (j in 1:length(indexes)){
             Time_min <- c(Time_min,(time[indexes[j]]$periodT))
@@ -1355,7 +1355,11 @@ output$saveData <- downloadHandler(
           statistics  <- PeriodicStatistics$activity
         }
       }
+      
+      print(data[,4])
         
+      data[,4] <- as.character(data[,4])
+      data[,5] <- as.character(data[,5])
       
       settings <- rbind(settingsTable()[1:3,],settingsTable()[5,])
       sheet <- createSheet(wb, "Settings")
