@@ -2090,7 +2090,7 @@ observe({
       
       animalsData <-  dataReport(data)
       
-      sheet <- createSheet(wb,"Replicates")
+      sheet <- createSheet(wb,"All data")
       addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
       
       
@@ -2156,7 +2156,7 @@ observe({
       
       animalsData <-  dataReport(data)
       
-      sheet <- createSheet(wb,"Replicates")
+      sheet <- createSheet(wb,"All data")
       addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
       
       
@@ -2222,7 +2222,7 @@ observe({
       
       animalsData <-  dataReport(data)
       
-      sheet <- createSheet(wb,"Replicates")
+      sheet <- createSheet(wb,"All data")
       addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
       
       
@@ -2283,7 +2283,7 @@ observe({
       
       animalsData <-  dataReport(data)
       
-      sheet <- createSheet(wb,"Replicates")
+      sheet <- createSheet(wb,"All data")
       addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
       
       

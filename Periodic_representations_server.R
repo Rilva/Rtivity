@@ -347,61 +347,67 @@ updatePeriodogram <- function() {
   ##### Periodogram #####
   #Represent the periodogram according to the selected function
   
-  req(max(damData$dt[,t])-min(damData$dt[,t]) > hours(l_period()))
-  if (input$perFun=='chi-sq'){
-    per_dt <- periodogram(activity, damData$dt, FUN = chi_sq_periodogram,
-                          period_range = c(hours(input$minPer), hours(input$maxPer)), time_resolution = hours(input$periodogramValue))
-  }
-  if (input$perFun=='fourier'){
-    per_dt <- periodogram(activity, damData$dt, FUN = fourier_periodogram,
-                          period_range = c(hours(input$minPer), hours(input$maxPer)))
-  }
-  if (input$perFun=='ls'){
-    per_dt <- periodogram(activity, damData$dt, FUN = ls_periodogram,
-                          period_range = c(hours(input$minPer), hours(input$maxPer)),oversampling = input$periodogramValue)
-  }
+  if(max(damData$dt[,t])-min(damData$dt[,t]) > hours(l_period()) & input$minPer<l_period() & input$maxPer > l_period()){
+    if (input$perFun=='chi-sq'){
+      per_dt <- periodogram(activity, damData$dt, FUN = chi_sq_periodogram,
+                            period_range = c(hours(input$minPer), hours(input$maxPer)), time_resolution = hours(input$periodogramValue))
+    }
+    if (input$perFun=='fourier'){
+      per_dt <- periodogram(activity, damData$dt, FUN = fourier_periodogram,
+                            period_range = c(hours(input$minPer), hours(input$maxPer)))
+    }
+    if (input$perFun=='ls'){
+      per_dt <- periodogram(activity, damData$dt, FUN = ls_periodogram,
+                            period_range = c(hours(input$minPer), hours(input$maxPer)),oversampling = input$periodogramValue)
+    }
+    
+    
+    per_dt <- find_peaks(per_dt)
+    
+    #Create periodogram
+    fig<- ggperio(per_dt, aes(period, power, colour=Data, linetype = Data)) +
+      stat_pop_etho() +
+      scale_colour_manual(values = graphsAestethics$df[,'lineColor'])+
+      scale_linetype_manual(values=graphsAestethics$df[,'lineType'])
+    
+    
+    if (input$showPeriods){
+      fig <- fig + geom_peak(peak_rank = 1)
+    }
   
-  per_dt <- find_peaks(per_dt)
-  
-  #Create periodogram
-  fig<- ggperio(per_dt, aes(period, power, colour=Data, linetype = Data)) +
-    stat_pop_etho() +
-    scale_colour_manual(values = graphsAestethics$df[,'lineColor'])+
-    scale_linetype_manual(values=graphsAestethics$df[,'lineType'])
-  
-  
-  if (input$showPeriods){
-    fig <- fig + geom_peak(peak_rank = 1)
-  }
-
-  #Add errors
-  if (input$errorChronogram == "NA"){
-    fig <- fig + scale_fill_manual(values = alpha(rep(NA, 100)), na.value = NA)
-  }
+    #Add errors
+    if (input$errorChronogram == "NA"){
+      fig <- fig + scale_fill_manual(values = alpha(rep(NA, 100)), na.value = NA)
+    }
+    else{
+      fig <- fig + stat_pop_etho(method = input$errorChronogram) + scale_fill_manual(values = alpha(graphsAestethics$df[,'lineColor'], 0))
+    }
+    
+    title <- "Periodogram"
+    x <-  "Period (h)"
+    y <- "Power"
+    
+    fig <- plotLabels(fig,"periodogram")
+    
+    PeriodData(find_peaks(per_dt))
+    
+    Figures$periodogram <- fig}
   else{
-    fig <- fig + stat_pop_etho(method = input$errorChronogram) + scale_fill_manual(values = alpha(graphsAestethics$df[,'lineColor'], 0))
+    Figures$periodogram <- NULL
   }
-  
-  title <- "Periodogram"
-  x <-  "Period (h)"
-  y <- "Power"
-  
-  fig <- plotLabels(fig,"periodogram")
-  
-  PeriodData(find_peaks(per_dt))
-  
-  Figures$periodogram <- fig
 }
 updateCumActivity<- function(){
   
   ##### Cumulative activity #####
   #Create cumulative activity graph
+  print("1")
   fig <- ggetho(damData$dt,aes(x = periodT, y = auc, colour=Data, linetype = Data),summary_FUN = max,
                 summary_time_window = mins(binSize())) + stat_pop_etho()
   
   fig <- fig + scale_colour_manual(values = graphsAestethics$df[,'lineColor'])+
     scale_linetype_manual(values=graphsAestethics$df[,'lineType'])
   
+  print("2")
   #Add errors
   if (input$errorChronogram == "NA"){
     fig <- fig + scale_fill_manual(values = alpha(rep(NA, 100)), na.value = NA)
@@ -414,7 +420,10 @@ updateCumActivity<- function(){
   x <-  paste0("Time (",input$xTime,")")
   y <- "Cumulative activity"
   
+  print("3")
   fig <- plotLabels(fig,"cumActivity")
+  
+  print("4")
   
   Figures$cumActivity <- fig
 }
@@ -462,13 +471,13 @@ updateFigures <- function(){
     updateChronogram24h()
     
     incProgress(1/7) #Increment of progress bar
-    updatePeriodogram()
-    
-    incProgress(1/7) #Increment of progress bar
     updateCumActivity()
     
     incProgress(1/7) #Increment of progress bar
     updateSleep()
+    
+    incProgress(1/7) #Increment of progress bar
+    updatePeriodogram()
   })
 }
 
@@ -504,7 +513,7 @@ updateLabels <- function(tab){
             FiguresYlabels$periodogram <- input$yLabel
           }
           else{
-            if (tab == "Cumuulative Activity"){
+            if (tab == "Cumulative Activity"){
               FiguresTitles$cumActivity <- input$graphTitle
               FiguresXlabels$ActivityAndSleep <- input$xLabel
               FiguresYlabels$cumActivity <- input$yLabel
@@ -1305,7 +1314,7 @@ output$saveData <- downloadHandler(
       sheet <- createSheet(wb, "Statistics")
       addDataFrame(PeriodicStatistics$periodogram, sheet=sheet, startColumn=1, row.names=FALSE)
       
-      sheet <- createSheet(wb, "Animals")
+      sheet <- createSheet(wb, "All channels")
       addDataFrame(PeriodicData$periodogram, sheet=sheet, startColumn=1, row.names=FALSE)
       
       #Create organized data sheet
@@ -1396,7 +1405,7 @@ output$saveData <- downloadHandler(
       }
       summaryData <- data.frame (joinedData[,1],dataDF)
 
-      sheet <- createSheet(wb, "Summary")
+      sheet <- createSheet(wb, "All channels_Horizontal organization")
       addDataFrame(summaryData, sheet=sheet, startColumn=1, row.names=FALSE)
         
       }

@@ -1624,7 +1624,7 @@ observe({
       data[,2] <- as.character(data[,2])
       data[,3] <- as.character(data[,3])
       
-      sheet <- createSheet(wb, "Dead Animals")
+      sheet <- createSheet(wb, "All channels")
       addDataFrame(data, sheet=sheet, startColumn=1, row.names=FALSE)
   
       # Create sheets
