@@ -64,7 +64,7 @@ div(
                     column(12, textInput("xLabelPeriod", "X axis label",""))),
                   
                   fluidRow(
-                    column(12, sliderInput('yLimitsPeriod','Graph y limits',min = 1, max = 48, value = c(1,48)))
+                    column(12, sliderInput('yLimitsPeriod','Period and power y limits',min = 1, max = 48, value = c(1,48)))
                   ),
                   
                   fluidRow(
@@ -81,7 +81,7 @@ div(
                   ),
                   
                   fluidRow(
-                    column(12, sliderInput('yLimitsPhase','Graph y limits',min = 1, max = 24, value = c(1,24), step = 0.1))
+                    column(12, sliderInput('yLimitsPhase','Phase, IS, IV and RA limits',min = 1, max = 24, value = c(1,24), step = 0.1))
                   ),
 
                   fluidRow(
@@ -124,14 +124,17 @@ div(
             
             fluidRow(
               
-              column(2),
+              column(1),
               column(3,
                      sliderInput('Fractal_limits','Time-scale limits', min = 0.1, max = 24, value = c(0.1,8), step = 0.1)),
               column(3,
                      sliderInput('TimeScale_limits','Time-scale division', min = 0.1, max = 24, value = 1.5, step = 0.1)),
               column(2,
-                     sliderInput('nFractal','Number of points', min = 10, max = 50, value = 30, step = 1)
-              )),
+                     sliderInput('nFractal','Number of points', min = 10, max = 50, value = 30, step = 1)),
+              column(2, 
+                     checkboxInput('twoScaling',HTML('<b>Two scaling exponents</b>'), FALSE))
+                     
+              ),
             
             fluidRow(
               column(4, 

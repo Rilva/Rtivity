@@ -25,6 +25,7 @@ whiteBackground <- function(fig, titleLetter = 16, axisLetter = 14,
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.background = element_blank(),
+          strip.background = element_blank(),
           legend.title = element_blank(),
           legend.key = element_rect(fill = NA),
           axis.title.x = element_text(margin = margin(10,10,10,10)),
@@ -32,7 +33,11 @@ whiteBackground <- function(fig, titleLetter = 16, axisLetter = 14,
           legend.text = element_text(size = legendLetter),
           axis.text = element_text(size = axisNumberLetter, face  ="bold", color = "black"),
           axis.title = element_text(size = axisLetter, face  ="bold"),
-          plot.title = element_text (size = titleLetter, face  ="bold", margin = margin(b = 20, t = 10), hjust = 0.5 ))
+          plot.title = element_text (size = titleLetter, face  ="bold", margin = margin(b = 20, t = 10), hjust = 0.5 ),
+          strip.text = element_text(size = axisLetter, face  ="bold")
+          )
+  
+  
   
   return(fig)
 }

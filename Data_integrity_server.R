@@ -37,7 +37,7 @@ observeEvent(input$FileToEvaluate,{
   
   #Check if file is text file
   if (file_ext(input$FileToEvaluate$name)!='txt'){
-    showNotification(paste(missingDataFile(), "is not a text file"), type = "error", duration = 5)
+    showNotification(paste(input$FileToEvaluate$name, "is not a text file"), type = "error", duration = 5)
   }
   validate(
     need(tools::file_ext(input$FileToEvaluate$name)=='txt',"")
@@ -53,10 +53,10 @@ observeEvent(input$FileToEvaluate,{
   datapath <- paste(DataDir(),DataFile(),sep = "/" )
   tryCatch({data <- read.table(datapath, sep = "\t")},
            warning = function(w) {
-             showNotification(paste(missingDataFile(), "is not in a table format"), type = "error", duration = 5)
+             showNotification(paste(DataFile(), "is not in a table format"), type = "error", duration = 5)
              data <- data.frame()
            }, error = function(e) {
-             showNotification(paste(missingDataFile(), "is not in a table format"), type = "error", duration = 5)
+             showNotification(paste(DataFile(), "is not in a table format"), type = "error", duration = 5)
              data <- data.frame()
            }, finally = {
            }
@@ -76,6 +76,12 @@ observeEvent(input$FileToEvaluate,{
   
   #Verify if first 10 columns are in he correct format
   colTypes <- sapply(data,class)
+  if (any(colTypes=="numeric")){
+    showNotification(paste(DataFile(), "has decimal values"), type = "error", duration = 5)
+    validate(
+      need(!any(colTypes=="numeric"),"")
+    )
+  }
   checkColType <- rep("integer",42)
   checkColType[2] <- "character"
   checkColType[3] <- "character"

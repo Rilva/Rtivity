@@ -33,24 +33,40 @@ BoutTimeFiguresYLabel <- reactiveVal("Mean bout duration")
 # Statistical graphics
 statisticPlots <- function(data, plot, error = NaN, graph = "activity" ){
   
+  if(input$pages == "Rhythm and fractal analysis"){
+    data[,'labels'] <- data[,'Labels']
+  }
+  
   if (plot == "BoxPlot"){
-    fig <- ggplot(data, aes(x=xPlot, y=yPlot, fill=Data, na.rm=TRUE))+
+    fig <- data %>%
+      mutate(labels = fct_relevel(labels, 
+                                  graphsAestethics$df[,'Label'])) %>%
+      ggplot(aes(x=xPlot, y=yPlot, fill=labels, na.rm=TRUE))+
       geom_boxplot(outlier.colour = "black", na.rm=TRUE)
   }
   else{ if (plot == "DotPlot"){
-    fig <- ggplot(data, aes(x=xPlot, y=yPlot, colour=Data, na.rm=TRUE))+
+    fig <- data %>%
+      mutate(labels = fct_relevel(labels, 
+                                  graphsAestethics$df[,'Label'])) %>%
+      ggplot(aes(x=xPlot, y=yPlot, colour=labels, na.rm=TRUE))+
       geom_point(position=position_jitterdodge(),na.rm=TRUE, size = 0.5)+
       stat_summary(fun.data = error, position = position_dodge(width=0.75), size = 1, width = 0.25, geom="errorbar")+
       stat_summary(geom = "point",fun = "mean", size = 3, position = position_dodge(width=0.75))
   }
     else if (plot == "pointRange"){
-      fig <- ggplot(data, aes(x=xPlot, y=yPlot, colour=Data, na.rm=TRUE))+
+      fig <- data %>%
+        mutate(labels = fct_relevel(labels, 
+                                    graphsAestethics$df[,'Label'])) %>%
+        ggplot(aes(x=xPlot, y=yPlot, colour=labels, na.rm=TRUE))+
         stat_summary(fun.data = error, position = position_dodge(width=0.75), size = 1, width = 0.25, geom="errorbar")+
         stat_summary(geom = "point",fun = "mean", size = 3, position = position_dodge(width=0.75))
     }
     else{
       if (plot == "BarPlot"){
-        fig <- ggplot(data, aes(x=xPlot, y=yPlot, fill=Data, na.rm=TRUE))+
+        fig <- data %>%
+          mutate(labels = fct_relevel(labels, 
+                                      graphsAestethics$df[,'Label'])) %>%
+          ggplot(aes(x=xPlot, y=yPlot, fill=labels, na.rm=TRUE))+
           stat_summary(fun.data = error, size = 0.5, width = 0.25, geom="errorbar", position = position_dodge(width=0.8))+
           stat_summary(geom = "bar",fun = "mean", width = 0.6, color = "black", size = 0.5, position = position_dodge(width=0.8))
       }
@@ -70,8 +86,8 @@ statisticsReport <- function(Data){
   
   conditions <- aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=mean)[,1]
   
-  Condition <- str_split_fixed(conditions, " - ",2)[,1]
-  Label <-  str_split_fixed(conditions, " - ",2)[,2]
+  Condition <- str_split_fixed(conditions, " - ",3)[,1]
+  Label <-  str_split_fixed(conditions, " - ",3)[,2]
   
   N  <- aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=length)[,2]
   Data_Mean <- round(aggregate(yPlot ~ interaction(labels,xPlot, sep = " - "), data=Data, FUN=mean)[,2],3)
@@ -81,7 +97,12 @@ statisticsReport <- function(Data){
   Data_1st_Quartile <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,2],3)
   Data_3rd_Quartile <- round(aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,4],3)
   
-  return(data.frame(Condition, Label, N, Data_Mean, Data_SEM, Data_SD, Data_Median, Data_1st_Quartile, Data_3rd_Quartile))
+  result <- data.frame(Condition, Label, N, Data_Mean, Data_SEM, Data_SD, Data_Median, Data_1st_Quartile, Data_3rd_Quartile)
+
+  x <- ordered(Condition, levels=graphsAestethics$df[,'Label'])
+  result <- result[order(Label,x),]
+  
+  return(result)
 }
 
 # Statistics report
@@ -226,6 +247,7 @@ activitySummary <- function(graph){
     summaryDT_melted <- melt(summaryDT, measure.vars = patterns("Group"),
                              variable.name = "xPlot", 
                              value.name = "yPlot")
+    
   }
   
   return(summaryDT_melted)
@@ -1172,8 +1194,7 @@ observeEvent(input$ActivitySummary_cell_edit,{
     
     conditions <- aggregate(yPlot ~ interaction(labels, xPlot,sep = " - "), data=activity, FUN=mean)[,1]
     Label <-  str_split_fixed(conditions, " - ",2)[,2]
-    
-    print(conditions)
+  
 
     for (k in 1: nrow(activity)){
       if (activity[k,'xPlot']==Label[i]){
@@ -1326,7 +1347,8 @@ observe({
   
   output$ActivitySummary <- DT::renderDataTable(statisticsReport(activity),
                                                 escape = FALSE, selection = 'none', 
-                                                editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
+                                                editable  = list(target = 'cell',
+                                                                 disable = list(columns = c(1,3,4,5,6,7,8,9))))
   
 })
 
@@ -1418,15 +1440,14 @@ observeEvent(input$updateActivityStatistics,{
     incProgress(0.5)
   })
   
-  updateYactivity()
-  
-  #Periodic representation update
-  updateFigures()
+  # #Periodic representation update
+  # updateFigures()
   
   req(nrow((BoutActivityData$lightDark))>0)
   updateBoutActivityFigures()
   updateBoutTimeFigures()
   
+  updateYactivity()
   updateYBoutActivity()
   updateYBoutTime()
   
@@ -1889,11 +1910,13 @@ observe({
         joinedData <- DF %>%group_by(Labels) %>% group_nest()
         
         Data <- data.frame()
-        
         for (i in 1:nrow(joinedData)){
           Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
         }
         colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
         
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
@@ -1962,6 +1985,9 @@ observe({
         }
         colnames(Data)<- unlist(joinedData[,'Labels'])
         
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
+        
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
       }
@@ -2027,6 +2053,9 @@ observe({
           Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
         }
         colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
         
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)

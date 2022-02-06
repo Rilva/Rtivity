@@ -11,8 +11,8 @@ SleepFiguresYLabel <- reactiveVal("Sleep ratio")
 ### TST and WASO and figure variables
 TST_WASOData <- reactiveValues(TST_all = NULL, TST_day = NULL, WASO_all = NULL, WASO_day = NULL)
 TST_WASOFigures <- reactiveValues(TST_all = NULL, TST_day = NULL, WASO_all = NULL, WASO_day = NULL)
-TST_WASOTitles <- reactiveValues(TST_all = "Total sleep time", TST_day = "Total sleep time per day", 
-                                     WASO_all = "Wake after sleep onset", WASO_day = "Wake after sleep onset per day")
+TST_WASOTitles <- reactiveValues(TST_all = "Mean total sleep time", TST_day = "Total sleep time per day", 
+                                     WASO_all = "Mean wake after sleep onset", WASO_day = "Wake after sleep onset per day")
 TST_WASOFiguresXLabel <- reactiveVal("")
 TST_WASOFiguresYLabel <- reactiveValues(TST = "TST (h)", WASO = "WASO (h)")
 
@@ -329,6 +329,10 @@ TST_WASOSummary <- function(parameter, graph){
     summaryDT_melted <- melt(summaryDT, measure.vars = patterns("TST"),variable.name = "xPlot", value.name = "yPlot")
     
     summaryDT_melted[, xPlot := str_replace_all(xPlot, "TST", "TotalSleepTime")]
+    
+    numberOfDays <- max(damData$dt[,'experimentDay'])-min(damData$dt[,'experimentDay'])+1
+    summaryDT_melted[,'yPlot':= summaryDT_melted[,'yPlot']/numberOfDays]
+    summaryDT_melted[which(is.na(summaryDT_melted[,'yPlot'])),'yPlot']<-0
   }
   
   if(parameter == "TST" & graph == "day"){
@@ -359,6 +363,8 @@ TST_WASOSummary <- function(parameter, graph){
     summaryDT_melted <- melt(summaryDT, measure.vars = patterns("Day"),
                              variable.name = "xPlot", 
                              value.name = "yPlot")
+    
+    summaryDT_melted[which(is.na(summaryDT_melted[,'yPlot'])),'yPlot']<-0
   }
   
   if(parameter == "WASO" & graph == "all"){
@@ -371,6 +377,12 @@ TST_WASOSummary <- function(parameter, graph){
     summaryDT_melted <- melt(summaryDT, measure.vars = patterns("WASO"),variable.name = "xPlot", value.name = "yPlot")
     
     summaryDT_melted[, xPlot := str_replace_all(xPlot, "WASO", "WakeAfterSleepOnset")]
+    
+    numberOfDays <- max(damData$dt[,'experimentDay'])-min(damData$dt[,'experimentDay'])+1
+    summaryDT_melted[,'yPlot':= summaryDT_melted[,'yPlot']/numberOfDays]
+    
+    summaryDT_melted[which(summaryDT_melted[,'yPlot']==0),'yPlot']<-NA
+    
   }
   
   if(parameter == "WASO" & graph == "day"){
@@ -401,6 +413,8 @@ TST_WASOSummary <- function(parameter, graph){
     summaryDT_melted <- melt(summaryDT, measure.vars = patterns("Day"),
                              variable.name = "xPlot", 
                              value.name = "yPlot")
+    
+    summaryDT_melted[which(summaryDT_melted[,'yPlot']==0),'yPlot']<-NA
     
   }
   
@@ -839,7 +853,7 @@ updateSleepFigures <- function (all=TRUE) {
 updateTSTall <- function() {
   fig <- statisticPlots(TST_WASOData$TST_all ,input$SleepPlot,input$SleepError, graph = "sleep")+
     labs(title = TST_WASOTitles$TST_all, x = TST_WASOFiguresXLabel(),
-         y = TST_WASOFiguresYLabel$TST)+ coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+         y = TST_WASOFiguresYLabel$TST)
   
   fig <- whiteBackground(fig, input$titleLetterSize3, input$axisLabelSize3,
                          input$axisNumbersSize3, input$dataLabelSize3)
@@ -849,7 +863,7 @@ updateTSTall <- function() {
 updateTSTday <- function() {
   fig <- statisticPlots(TST_WASOData$TST_day ,input$SleepPlot,input$SleepError, graph = "sleep")+
     labs(title = TST_WASOTitles$TST_day, x = TST_WASOFiguresXLabel(),
-         y = TST_WASOFiguresYLabel$TST)+ coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+         y = TST_WASOFiguresYLabel$TST)
   
   fig <- whiteBackground(fig, input$titleLetterSize3, input$axisLabelSize3,
                          input$axisNumbersSize3, input$dataLabelSize3)
@@ -859,7 +873,7 @@ updateTSTday <- function() {
 updateWASOall <- function() {
   fig <- statisticPlots(TST_WASOData$WASO_all ,input$SleepPlot,input$SleepError, graph = "sleep")+
     labs(title = TST_WASOTitles$WASO_all, x = TST_WASOFiguresXLabel(),
-         y = TST_WASOFiguresYLabel$WASO)+ coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+         y = TST_WASOFiguresYLabel$WASO)
   
   fig <- whiteBackground(fig, input$titleLetterSize3, input$axisLabelSize3,
                          input$axisNumbersSize3, input$dataLabelSize3)
@@ -869,7 +883,7 @@ updateWASOall <- function() {
 updateWASOday <- function() {
   fig <- statisticPlots(TST_WASOData$WASO_day ,input$SleepPlot,input$SleepError, graph = "sleep")+
     labs(title = TST_WASOTitles$WASO_day, x = TST_WASOFiguresXLabel(),
-         y = TST_WASOFiguresYLabel$WASO)+ coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+         y = TST_WASOFiguresYLabel$WASO)
   
   fig <- whiteBackground(fig, input$titleLetterSize3, input$axisLabelSize3,
                          input$axisNumbersSize3, input$dataLabelSize3)
@@ -893,6 +907,25 @@ updateTST_WASOFigures <- function () {
 }
 
 #Sleep bouts
+updateY_TST_WASO <- function() {
+  
+  if (input$TST_WASOPlotsTabs == "Total Sleep Time"){
+    TST_WASOFigures$TST_all <- TST_WASOFigures$TST_all + coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+  }
+  else{
+    if (input$TST_WASOPlotsTabs == "Total Sleep Time per day"){
+      TST_WASOFigures$TST_day <- TST_WASOFigures$TST_day + coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+    }
+    else{
+      if(input$TST_WASOPlotsTabs == "Wake after sleep onset"){
+        TST_WASOFigures$WASO_all <- TST_WASOFigures$WASO_all + coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+      }
+      else{
+        TST_WASOFigures$WASO_day <- TST_WASOFigures$WASO_day + coord_cartesian(ylim = input$yLimitsTST_WASOTime)
+      }
+    }
+  }
+}
 updateYSleepTime <- function() {
   
   if (input$SleepTimePlotsTabs == "Sleep bout duration per light phase"){
@@ -1056,10 +1089,10 @@ observeEvent(input$files,{
   TST_WASOFigures$WASO_all <- NULL
   TST_WASOFigures$WASO_day <- NULL
   
-  TST_WASOTitles$TST_all <- "Total sleep time"
+  TST_WASOTitles$TST_all <- "Mean total sleep time"
   TST_WASOTitles$TST_day <- "Total sleep time per day"
-  TST_WASOTitles$WASO_all <- "Wake after sleep onset"
-  TST_WASOTitles$WASO_day <- "Wake after sleep onsetper day"
+  TST_WASOTitles$WASO_all <- "Mean wake after sleep onset"
+  TST_WASOTitles$WASO_day <- "Wake after sleep onset per day"
   TST_WASOFiguresXLabel("")
   TST_WASOFiguresYLabel$TST <- "TST (h)"
   TST_WASOFiguresYLabel$WASO <- "WASO (h)"
@@ -1597,6 +1630,11 @@ observeEvent(input$updateSleepStatistics,{
     incProgress(0.25)
   })
   
+  updateY_TST_WASO()
+  updateYSleepTime()
+  updateYSleepLatency()
+  
+  
 })
 
 #Update Text fields
@@ -1996,12 +2034,43 @@ observe({
     })
 })
 observe({
-  req(BoutSleepTimeFigures$lightDark)
+  req(TST_WASOFigures$TST_all)
   
-  output$saveSleepLatencyFig <- downloadHandler(
+  output$saveTST_WASOFig <- downloadHandler(
     
     filename = function(){
-      paste0(input$SleepTimePlotsTabs,input$SleepLatencyFig)
+      paste0(input$TST_WASOPlotsTabs,input$TST_WASOFig)
+    },
+    content = function(file){
+      
+      if (input$TST_WASOPlotsTabs == "Total Sleep Time"){
+        fig <- TST_WASOFigures$TST_all
+      }
+      else{
+        if (input$TST_WASOPlotsTabs == "Total Sleep Time per day"){
+          fig <- TST_WASOFigures$TST_day
+        }
+        else{
+          if(input$TST_WASOPlotsTabs == "Wake after sleep onset"){
+            fig <- TST_WASOFigures$WASO_all
+          }
+          else{
+            fig <- TST_WASOFigures$WASO_day
+          }
+        }
+      }
+      
+      ggsave(filename = file, plot = fig,
+             width = round(input$SleepWidth/97), height= round(input$SleepHeight/97))
+    })
+})
+observe({
+  req(BoutSleepTimeFigures$lightDark)
+  
+  output$saveSleepTimeFig <- downloadHandler(
+    
+    filename = function(){
+      paste0(input$SleepTimePlotsTabs,input$SleepTimeFig)
     },
     content = function(file){
       
@@ -2023,7 +2092,7 @@ observe({
       }
       
       ggsave(filename = file, plot = fig,
-             width = round(input$ActivityWidth/97), height= round(input$ActivityHeight/97))
+             width = round(input$SleepWidth/97), height= round(input$SleepHeight/97))
     })
 })
 observe({
@@ -2122,10 +2191,82 @@ observe({
         }
         colnames(Data)<- unlist(joinedData[,'Labels'])
         
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
+        
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
       }
 
+      saveWorkbook(wb, file = file)
+    })
+})
+observe({
+  req(TST_WASOData$TST_all)
+  
+  output$saveTST_WASOReport <- downloadHandler(
+    
+    filename = function(){
+      paste0(input$TST_WASOPlotsTabs,".xlsx")
+    },
+    content = function(file){
+      
+      wb <- createWorkbook(type="xlsx")
+      
+      if (input$TST_WASOPlotsTabs == "Total Sleep Time"){
+        data <- TST_WASOData$TST_all
+      }
+      else{
+        if (input$TST_WASOPlotsTabs == "Total Sleep Time per day"){
+          data <- TST_WASOData$TST_day
+        }
+        else{
+          if(input$TST_WASOPlotsTabs == "Wake after sleep onset"){
+            data <- TST_WASOData$WASO_all
+          }
+          else{
+            data <- TST_WASOData$WASO_day
+          }
+        }
+      }
+      
+      settings <- rbind(settingsTable()[1:2,],settingsTable()[5,])
+      sheet <- createSheet(wb, "Settings")
+      addDataFrame(settings, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      sheet <- createSheet(wb, "Statistics")
+      addDataFrame(statisticsReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      animalsData <-  dataReport(data)
+      
+      sheet <- createSheet(wb,"All data")
+      addDataFrame(animalsData, sheet=sheet, startColumn=1, row.names=FALSE)
+      
+      
+      #Create organized data sheet
+      Labels <- animalsData[,'Labels']
+      
+      for (k in 6:ncol(animalsData)){
+        
+        dataColumn <- animalsData[,k]
+        DF <- data.frame(Labels,dataColumn)
+        joinedData <- DF %>%group_by(Labels) %>% group_nest()
+        
+        Data <- data.frame()
+        
+        for (i in 1:nrow(joinedData)){
+          Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
+        }
+        colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
+        
+        sheet <- createSheet(wb, colnames(animalsData)[k])
+        addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
+      }
+      
+      
       saveWorkbook(wb, file = file)
     })
 })
@@ -2187,6 +2328,9 @@ observe({
         }
         colnames(Data)<- unlist(joinedData[,'Labels'])
         
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
+        
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
       }
@@ -2247,6 +2391,9 @@ observe({
           Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
         }
         colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
         
         sheet <- createSheet(wb, colnames(animalsData)[k])
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)

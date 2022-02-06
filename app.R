@@ -21,7 +21,8 @@ list.of.packages <- c("shiny","shinyFiles","shinyTime","shinyWidgets","behavr","
                       "damr","zeitgebr","sleepr","ggetho","DT","fs","dplyr","Hmisc","shinyjs","readr","colourpicker",
                       "lattice","survival","Formula","stringr","DescTools","graphics","doBy","zoo","tm","base",
                       "scales","shinythemes","xlsx",
-                      "longitudinalData", "ActCR", "tools","nonlinearTseries","shinytitle")
+                      "longitudinalData", "ActCR", "tools","nonlinearTseries","shinytitle",
+                      "tidyverse")
 
 #checking missing packages from list
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -68,6 +69,7 @@ library(tools)
 library(nonlinearTseries) #DFA
 library(shinytitle)
 
+library(tidyverse)
 
 shinyApp(
   
@@ -95,7 +97,9 @@ shinyApp(
                            font-weight:bold "),
                            #
                             h3("A versatile software for the automated analysis of animal activity and sleep patterns", align = "center", style = "font-family: Cambria; font-size: 35px;
-                           font-weight:bold;margin-bottom: 80px"),
+                           font-weight:bold;margin-bottom: 20px"),
+                            h4("Version 1.2",align = "center", style = "font-family: Cambria; font-size: 30px;
+                           font-weight:bold;text-decoration: underline; margin-bottom: 80px"),
                             
                             
                             source("Data_selection_ui.R", local=TRUE)[1]
@@ -137,11 +141,11 @@ shinyApp(
     
     #Delete conditions function
     
-    # session$onSessionEnded(function() {
-    #   stopApp()
-    #   q("no")
-    # })
-    
+    session$onSessionEnded(function() {
+      stopApp()
+      q("no")
+    })
+
     options(shiny.maxRequestSize=100*1024^2)
     
     change_window_title(
@@ -182,6 +186,9 @@ shinyApp(
     
     #Data integrity
     source("Data_integrity_server.R",local = TRUE)
+    
+    #Bin converter
+    source("Bin_converter_server.R",local = TRUE)
     
     #### Graphs functions
     source("Graphs_aesthetics.R",local = TRUE)

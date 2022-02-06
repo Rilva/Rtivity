@@ -67,7 +67,7 @@ div(
                                    border-style: groove;border-width: 2px;font-size: 11pt",
               
                        sidebarLayout(
-                         mainPanel(
+                         mainPanel(width=9,
                            fluidRow(
                              column(1),
                              column(4,
@@ -78,14 +78,46 @@ div(
                                     downloadButton("saveInputtedData", "Save file with imputted missing data"))),
                            
                          ),
-                         sidebarPanel(style = "background:none; border:none",
+                         sidebarPanel(width = 3, 
+                                      style = "background:none; border:none",
                                       fluidRow(
                                         column(12, style = "margin-top:10px",
                                                textOutput("fileCheck"))
                                       )
                          ))
                        
-                       )
+                       ),
+              tabPanel("Bin converter",
+                       id ="BinDataDiv",
+                       style = "background-color:#F5F5F5; padding: 10pt;
+                                   border-style: groove;border-width: 2px;font-size: 11pt",
+                       
+                       sidebarLayout(
+                         mainPanel(width=9,
+                           fluidRow(
+                             column(1),
+                             column(3,
+                                    fileInput("FileToConvert","Choose file to convert bins", multiple = FALSE, accept = "text/plain")
+                             ),
+                             column(2,style = "margin-top:25px",actionButton("evaluateBins","Analyze data bins", class = "btn btn-success")),
+                             # column(2,style = "margin-top:25px",textOutput("DataInfo")),
+                           #   ),
+                           # 
+                           # fluidRow(
+                           #   column(1),
+                             column(4, uiOutput("binsButtons")),
+                             column(2, style = "margin-top:25px", uiOutput("ConvertButton"))
+                           )
+                           
+                         ),
+                         sidebarPanel(width = 3, style = "background:none; border:none",
+                                      fluidRow(
+                                        column(12,
+                                               textOutput("DataInfo"))
+                                      )
+                         ))
+                       
+              )
   )
   
 ),

@@ -35,6 +35,8 @@ CircadianStatistics <- reactiveValues(periodogram = NULL, period = NULL, power =
 
 ####### DAF
 DAFdata <- reactiveValues(ScalingExponents = NULL)
+FractalRepresentationData <- reactiveVal(NULL)
+FractalRepresentationLimit <- reactiveVal(NULL)
 
 DAFstatisticsData <- reactiveVal(NULL)
 
@@ -47,44 +49,34 @@ DAFfigureYlabel <- reactiveVal("Detrending fluctuation F(n)")
 
 ################################ Functions ##################################
 
+
+
+################ Adaptation of relative amplitude function from ActCR package
+
 #Present statistics
-PeriodogramReport <- function(Data, x=TRUE){
+PhaseReport <- function(Data){
   
   req(nrow(Data)>0)
-  if(x==TRUE){
     colnames(Data)[2] <- 'Labels'
-    conditions <- aggregate(yPlot ~ xPlot, data=Data, FUN=mean)[,1]
+    conditions <- aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=mean)[,1]
     
     Condition <- str_split_fixed(conditions, " - ",2)[,1]
+    Label <-  str_split_fixed(conditions, " - ",2)[,2]
     
-    N  <- aggregate(yPlot ~ xPlot, data=Data, FUN=length)[,2]
-    Data_Mean <- round(aggregate(yPlot ~ xPlot, data=Data, FUN=mean)[,2],3)
-    Data_SEM <- round(aggregate(yPlot ~ xPlot, data=Data, FUN=se)[,2],3)
-    Data_SD <- round(aggregate(yPlot ~ xPlot, data=Data, FUN=sd)[,2],3)
-    Data_Median <- round(aggregate(yPlot ~ xPlot, data=Data, FUN=median)[,2],3)
-    Data_1st_Quartile <- round(aggregate(yPlot ~ xPlot, data=Data, FUN=quantile)[,2][,2],3)
-    Data_3rd_Quartile <- round(aggregate(yPlot ~ xPlot, data=Data, FUN=quantile)[,2][,4],3)
+    N  <- aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=length)[,2]
+    Data_Mean <- round(aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=mean)[,2],3)
+    Data_SEM <- round(aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=se)[,2],3)
+    Data_SD <- round(aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=sd)[,2],3)
+    Data_Median <- round(aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=median)[,2],3)
+    Data_1st_Quartile <- round(aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,2],3)
+    Data_3rd_Quartile <- round(aggregate(yPlot ~ interaction(Labels, xPlot,sep = " - "), data=Data, FUN=quantile)[,2][,4],3)
   
-    return(data.frame(Condition, N, Data_Mean, Data_SEM, Data_SD, Data_Median, Data_1st_Quartile, Data_3rd_Quartile))
+    result <- data.frame(Condition, Label, N, Data_Mean, Data_SEM, Data_SD, Data_Median, Data_1st_Quartile, Data_3rd_Quartile)
     
-    }
-  else{
-  colnames(Data)[2] <- 'Labels'
-  conditions <- aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=mean)[,1]
-  
-  Condition <- str_split_fixed(conditions, " - ",2)[,2]
-  Label <-  str_split_fixed(conditions, " - ",2)[,1]
-  
-  N  <- aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=length)[,2]
-  Data_Mean <- round(aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=mean)[,2],3)
-  Data_SEM <- round(aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=se)[,2],3)
-  Data_SD <- round(aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=sd)[,2],3)
-  Data_Median <- round(aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=median)[,2],3)
-  Data_1st_Quartile <- round(aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=quantile)[,2][,2],3)
-  Data_3rd_Quartile <- round(aggregate(yPlot ~ interaction(xPlot,Labels,sep = " - "), data=Data, FUN=quantile)[,2][,4],3)
-  
-  }
-  return(data.frame(Condition, Label, N, Data_Mean, Data_SEM, Data_SD, Data_Median, Data_1st_Quartile, Data_3rd_Quartile))
+    x <- ordered(Condition, levels=graphsAestethics$df[,'Label'])
+    result <- result[order(Label,x),]
+    
+    return(result)
 }
 
 PeriodogramData <- function() {
@@ -113,6 +105,14 @@ PeriodogramData <- function() {
     
     if (!is.null(per_dt)){
       per_dt <- find_peaks(per_dt, n_peaks = 1)
+      
+      n <- nrow(per_dt)/nrow(per_dt[,,meta=T])
+      label <- per_dt[,'labels',meta=T]
+      Labels<- c()
+      for (i in 1:nrow(per_dt[,,meta=T])){
+        Labels<- c(Labels,rep(label[i],n))
+      }
+      per_dt[,Labels:=Labels]
       CircadianData$periodogram <- per_dt
     }
     else{
@@ -132,14 +132,16 @@ PeriodAndPower<- function(){
   data <- CircadianData$periodogram[which(peak==1),]
 
   period <- cbind(data[,labels,meta=T],data[,2]/3600, data[,Data,meta=T])
-  colnames(period)[1] <- 'xPlot'
+  colnames(period)[1] <- 'Labels'
+  period[,xPlot := "Period"]
   colnames(period)[2] <- 'yPlot' 
   colnames(period)[3] <- 'Data'
   
   CircadianData$period <- period
   
   power <- cbind(data[,labels,meta=T],data[,3], data[,Data,meta=T])
-  colnames(power)[1] <- 'xPlot'
+  colnames(power)[1] <- 'Labels'
+  power[,xPlot := "Power"]
   colnames(power)[2] <- 'yPlot'
   colnames(power)[3] <- 'Data'
   
@@ -150,7 +152,7 @@ DAFsummary <- function(){
   
   #Unique ids
   ids <- unique(damData$dt[,id])
-  
+
   #### Statistics variables
   File <- c()
   Labels <- c()
@@ -160,47 +162,166 @@ DAFsummary <- function(){
   ScalingExponent1 <- c()
   ScalingExponent2 <- c()
   
-  #Get scaling expoent of each animal
-  for(i in 1:length(ids)){
-    #Mean activity scaling exponent
-    animalData <- damData$dt[damData$dt[,id] == ids[i] & day_night == TRUE,]
-    
-    animalDFA1 <- dfa(time.series = animalData[,activity],npoints = input$nFractal,
-                      window.size.range=c(mins(input$Fractal_limits[1]),mins(input$TimeScale_limits)),
-                      do.plot=FALSE)
-    
-    animalDFA2 <- dfa(time.series = animalData[,activity],npoints = input$nFractal,
-                      window.size.range=c(mins(input$TimeScale_limits),mins(input$Fractal_limits[2])),
-                      do.plot=FALSE)
-    
-    
-    if (any(is.nan(animalDFA1$fluctuation.function)==FALSE)){
-      estimation1 <- estimate(animalDFA1,do.plot=FALSE)
-      ScalingExponent1 <-c(ScalingExponent1,estimation1[1])
-    }
-    else{
-      ScalingExponent1 <- c(ScalingExponent1,NA)
-    }
-    
-    if (any(is.nan(animalDFA2$fluctuation.function)==FALSE)){
-      estimation2 <- estimate(animalDFA2,do.plot=FALSE)
-      ScalingExponent2 <-c(ScalingExponent2,estimation2[1])
-    }
-    else{
-      ScalingExponent2 <- c(ScalingExponent2,NA)
-    }
-    
-    
-    File <- c(File,animalData[,file_info,meta=T][[1]]$file)
-    Labels <- c(Labels,animalData[,labels,meta= T])
-    Channels <- c(Channels,animalData[,region_id,meta= T])
-    Start_datetime <- c(Start_datetime,animalData[,start_datetime,meta= T])
-    End_datetime <- c(End_datetime,animalData[,stop_datetime,meta= T])
-  }
   
+  ### Regression variables
+  RegressionLabel1 <- c()
+  yInitial1 <- c()
+  yFinal1 <- c()
+  xInitial1 <- c()
+  xFinal1 <- c()
+  
+  RegressionLabel2 <- c()
+  yInitial2 <- c()
+  yFinal2 <- c()
+  xInitial2 <- c()
+  xFinal2 <- c()
+  
+  Labels1 <- c()
+  xPlot1 <- c()
+  yPlot1 <- c()
+  
+  Labels2 <- c()
+  xPlot2 <- c()
+  yPlot2 <- c()
+  
+  
+  #Get scaling expoent of each animal
+  if (input$twoScaling == TRUE){
+    for(i in 1:length(ids)){
+      #Mean activity scaling exponent
+      animalData <- damData$dt[damData$dt[,id] == ids[i] & day_night == TRUE,]
+      
+      
+      animalDFA1 <- dfa(time.series = animalData[,activity],npoints = input$nFractal,
+                        window.size.range=c(mins(input$Fractal_limits[1]),mins(input$TimeScale_limits)),
+                        do.plot=FALSE)
+      
+      Labels1 <- c(Labels1,rep(unique(animalData[,labels]),input$nFractal))
+      xPlot1 <- c(xPlot1,animalDFA1$window.sizes)
+      yPlot1 <- c(yPlot1,animalDFA1$fluctuation.function)
+      
+      ### Regression1
+      estimation1 <- estimate(animalDFA1,do.plot=FALSE)
+      EstimateAttr1 <- attributes(estimation1)$fitted
+      RegressionLabel1 <- c(RegressionLabel1,unique(animalData[,labels]))
+      xInitial1 <- c(xInitial1,EstimateAttr1$x[1])
+      yInitial1 <- c(yInitial1,EstimateAttr1$y[1])
+      xFinal1 <- c(xFinal1,EstimateAttr1$x[length(EstimateAttr1$x)])
+      yFinal1 <- c(yFinal1,EstimateAttr1$y[length(EstimateAttr1$y)])
+      
+      animalDFA2 <- dfa(time.series = animalData[,activity],npoints = input$nFractal,
+                        window.size.range=c(mins(input$TimeScale_limits),mins(input$Fractal_limits[2])),
+                        do.plot=FALSE)
+      
+      Labels2 <- c(Labels2,rep(unique(animalData[,labels]),input$nFractal))
+      xPlot2 <- c(xPlot2,animalDFA2$window.sizes)
+      yPlot2 <- c(yPlot2,animalDFA2$fluctuation.function)
+      
+      ### Regression2
+      estimation2 <- estimate(animalDFA2,do.plot=FALSE)
+      EstimateAttr2 <- attributes(estimation2)$fitted
+      RegressionLabel2 <- c(RegressionLabel2,unique(animalData[,labels]))
+      xInitial2 <- c(xInitial2,EstimateAttr2$x[1])
+      yInitial2 <- c(yInitial2,EstimateAttr2$y[1])
+      xFinal2 <- c(xFinal2,EstimateAttr2$x[length(EstimateAttr2$x)])
+      yFinal2 <- c(yFinal2,EstimateAttr2$y[length(EstimateAttr2$y)])
+      
+      
+      if (any(is.nan(animalDFA1$fluctuation.function)==FALSE)){
+        estimation1 <- estimate(animalDFA1,do.plot=FALSE)
+        ScalingExponent1 <-c(ScalingExponent1,estimation1[1])
+      }
+      else{
+        ScalingExponent1 <- c(ScalingExponent1,NA)
+      }
+      
+      if (any(is.nan(animalDFA2$fluctuation.function)==FALSE)){
+        estimation2 <- estimate(animalDFA2,do.plot=FALSE)
+        ScalingExponent2 <-c(ScalingExponent2,estimation2[1])
+      }
+      else{
+        ScalingExponent2 <- c(ScalingExponent2,NA)
+      }
+      
+      
+      File <- c(File,animalData[,file_info,meta=T][[1]]$file)
+      Labels <- c(Labels,animalData[,labels,meta= T])
+      Channels <- c(Channels,animalData[,region_id,meta= T])
+      Start_datetime <- c(Start_datetime,animalData[,start_datetime,meta= T])
+      End_datetime <- c(End_datetime,animalData[,stop_datetime,meta= T])
+    }
+  
+  
+  Label <- c(Labels1,Labels2)
+  xPlot <- c(xPlot1, xPlot2)
+  yPlot <- c(yPlot1, yPlot2)
+  
+  FractalRepresentationData(data.frame(Label, xPlot, yPlot))
+  
+  
+  #Regression lines
+  RegressionLabel <- RegressionLabel1
+  
+  FractalRepresentationLimit(data.frame(RegressionLabel,xInitial1,xFinal1,yInitial1,yFinal1,
+                                        xInitial2,xFinal2,yInitial2,yFinal2))
   #Scaling expoents results
   DAFdata$ScalingExponents <- data.frame(File, Labels, Channels, Start_datetime, End_datetime, ScalingExponent1, ScalingExponent2)
   
+  }
+  else{
+    
+    for(i in 1:length(ids)){
+      #Mean activity scaling exponent
+      animalData <- damData$dt[damData$dt[,id] == ids[i] & day_night == TRUE,]
+      
+      animalDFA1 <- dfa(time.series = animalData[,activity],npoints = input$nFractal,
+                        window.size.range=c(mins(input$Fractal_limits[1]),mins(input$Fractal_limits[2])),
+                        do.plot=FALSE)
+      
+      Labels1 <- c(Labels1,rep(unique(animalData[,labels]),input$nFractal))
+      xPlot1 <- c(xPlot1,animalDFA1$window.sizes)
+      yPlot1 <- c(yPlot1,animalDFA1$fluctuation.function)
+      
+      ### Regression1
+      estimation1 <- estimate(animalDFA1,do.plot=FALSE)
+      EstimateAttr1 <- attributes(estimation1)$fitted
+      RegressionLabel1 <- c(RegressionLabel1,unique(animalData[,labels]))
+      xInitial1 <- c(xInitial1,EstimateAttr1$x[1])
+      yInitial1 <- c(yInitial1,EstimateAttr1$y[1])
+      xFinal1 <- c(xFinal1,EstimateAttr1$x[length(EstimateAttr1$x)])
+      yFinal1 <- c(yFinal1,EstimateAttr1$y[length(EstimateAttr1$y)])
+      
+      if (any(is.nan(animalDFA1$fluctuation.function)==FALSE)){
+        estimation1 <- estimate(animalDFA1,do.plot=FALSE)
+        ScalingExponent1 <-c(ScalingExponent1,estimation1[1])
+      }
+      else{
+        ScalingExponent1 <- c(ScalingExponent1,NA)
+      }
+      
+      File <- c(File,animalData[,file_info,meta=T][[1]]$file)
+      Labels <- c(Labels,animalData[,labels,meta= T])
+      Channels <- c(Channels,animalData[,region_id,meta= T])
+      Start_datetime <- c(Start_datetime,animalData[,start_datetime,meta= T])
+      End_datetime <- c(End_datetime,animalData[,stop_datetime,meta= T])
+    }
+    
+    
+    Label <- Labels1
+    xPlot <- xPlot1
+    yPlot <- yPlot1
+    
+    FractalRepresentationData(data.frame(Label, xPlot, yPlot))
+    
+    
+    #Regression lines
+    RegressionLabel <- RegressionLabel1
+    
+    FractalRepresentationLimit(data.frame(RegressionLabel,xInitial1,xFinal1,yInitial1,yFinal1))
+    #Scaling expoents results
+    DAFdata$ScalingExponents <- data.frame(File, Labels, Channels, Start_datetime, End_datetime, ScalingExponent1)
+    
+  }
 }
 
 ### Statistics tables
@@ -209,9 +330,9 @@ PeriodicStatisticsData <- function(){
   # Calculate periodogram data
   
     req(CircadianData$periodogram)
-    CircadianData$periodogram[,period := period/3600]
     
     peaks <- CircadianData$periodogram[which(peak==1),]
+    peaks <- peaks[,'period' := period/3600]
     
     if (nrow(peaks)>0){
       
@@ -239,9 +360,19 @@ PeriodicStatisticsData <- function(){
       Power_1st_Quartile  <- round(aggregate(power ~ Labels, data=aggregateData, FUN=quantile)[,2][,2],3)
       Power_3rd_Quartile  <- round(aggregate(power ~ Labels, data=aggregateData, FUN=quantile)[,2][,4],3)
       
-      CircadianStatistics$periodogram <- data.frame(Conditions, N, Period_Mean, Period_SEM, Period_SD, Power_Mean, Power_SEM, Power_SD)
-      CircadianStatistics$period <- data.frame(Conditions, N, Period_Mean, Period_SEM, Period_SD, Period_Median, Period_1st_Quartile, Period_3rd_Quartile)
-      CircadianStatistics$power <- data.frame(Conditions, N, Power_Mean, Power_SEM, Power_SD, Power_Median, Power_1st_Quartile, Power_3rd_Quartile)
+      x <- ordered(Conditions, levels=graphsAestethics$df[,'Label'])
+      
+      periodogramStatistics <- data.frame(Conditions, N, Period_Mean, Period_SEM, Period_SD, Power_Mean, Power_SEM, Power_SD)
+      periodogramStatistics <- periodogramStatistics[order(x),]
+      CircadianStatistics$periodogram <- periodogramStatistics
+      
+      periodStatistics <- data.frame(Conditions, N, Period_Mean, Period_SEM, Period_SD, Period_Median, Period_1st_Quartile, Period_3rd_Quartile)
+      periodStatistics <- periodStatistics[order(x),]
+      CircadianStatistics$period <- periodStatistics
+      
+      powerStatistics <- data.frame(Conditions, N, Power_Mean, Power_SEM, Power_SD, Power_Median, Power_1st_Quartile, Power_3rd_Quartile)
+      powerStatistics <- powerStatistics[order(x),]
+      CircadianStatistics$power <- powerStatistics
       }
     else{
       CircadianStatistics$periodogram <-  NULL
@@ -265,32 +396,115 @@ DAFStatistics <- function(){
   Data_1st_Quartile <- round(aggregate(ScalingExponent1 ~ Labels, data=Results, FUN=quantile)[,2][,2],3)
   Data_3rd_Quartile <- round(aggregate(ScalingExponent1 ~ Labels, data=Results, FUN=quantile)[,2][,4],3)
   
-  Variable <- "Scaling exponent 1"
+  if (input$twoScaling == TRUE){
+    Variable <- "Scaling exponent 1"
+  }
+  else{
+    Variable <- "Scaling exponent"
+  }
   fractal1 <- data.frame(Conditions, Variable, N, Data_Mean, Data_SEM,
                          Data_SD, Data_Median, Data_1st_Quartile,
                          Data_3rd_Quartile)
   
+  x <- ordered(Conditions, levels=graphsAestethics$df[,'Label'])
+  fractal1 <- fractal1[order(x),]
   
-  #####Fractal summary right
-  Conditions <- aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=mean)[,1]
+  if (input$twoScaling == TRUE){
+    #####Fractal summary right
+    Conditions <- aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=mean)[,1]
+    
+    N  <- aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=length)[,2]
+    Data_Mean <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=mean)[,2],3)
+    Data_SEM <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=se)[,2],3)
+    Data_SD <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=sd)[,2],3)
+    Data_Median <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=median)[,2],3)
+    Data_1st_Quartile <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=quantile)[,2][,2],3)
+    Data_3rd_Quartile <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=quantile)[,2][,4],3)
+    
+    Variable <- "Scaling exponent 2"
+    
+    fractal2 <- data.frame(Conditions, Variable, N, Data_Mean, Data_SEM,
+                           Data_SD, Data_Median, Data_1st_Quartile,
+                           Data_3rd_Quartile)
+    
+    fractal2 <- fractal2[order(x),]
+    
+    DAFstatisticsData(rbind(fractal1,fractal2))
+  }
+  else{
+    DAFstatisticsData(fractal1)
+  }
   
-  N  <- aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=length)[,2]
-  Data_Mean <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=mean)[,2],3)
-  Data_SEM <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=se)[,2],3)
-  Data_SD <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=sd)[,2],3)
-  Data_Median <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=median)[,2],3)
-  Data_1st_Quartile <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=quantile)[,2][,2],3)
-  Data_3rd_Quartile <- round(aggregate(ScalingExponent2 ~ Labels, data=Results, FUN=quantile)[,2][,4],3)
   
-  Variable <- "Scaling exponent 2"
-  
-  fractal2 <- data.frame(Conditions, Variable, N, Data_Mean, Data_SEM,
-                         Data_SD, Data_Median, Data_1st_Quartile,
-                         Data_3rd_Quartile)
-  
-  DAFstatisticsData(rbind(fractal1,fractal2))
 }
-
+updateDAFfig <- function(){
+  
+  req(damData$dt)
+  
+  aggregateData <- aggregate(yPlot ~ interaction(Label,xPlot,sep=" - "), data = FractalRepresentationData(), FUN = mean)
+  Labels <-  str_split_fixed(aggregateData[,1], " - ",2)[,1]
+  xPlot <-  as.numeric(str_split_fixed(aggregateData[,1], " - ",2)[,2])
+  yPlot <- aggregateData[,2]
+  
+  RepresentationData<- data.frame(Labels,xPlot,yPlot)
+  
+  x <- ordered(Labels, levels=graphsAestethics$df[,'Label'])
+  RepresentationData <- RepresentationData[order(x),]
+  
+  Label <- aggregate(xInitial1 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,1]
+  xInitial1 <- aggregate(xInitial1 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]/60
+  xFinal1 <- aggregate(xFinal1 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]/60
+  yInitial1 <- aggregate(yInitial1 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]
+  yFinal1 <- aggregate(yFinal1 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]
+  
+  x <- ordered(Label, levels=graphsAestethics$df[,'Label'])
+  RegressionLimits1 <- data.frame(Label,xInitial1,xFinal1,yInitial1,yFinal1)
+  colnames(RegressionLimits1) <- c("Label","xInitial","xFinal","yInitial","yFinal")
+  
+  RegressionLimits1 <- RegressionLimits1[order(x),]
+  
+  if (input$twoScaling == TRUE){
+    xInitial2 <- aggregate(xInitial2 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]/60
+    xFinal2 <- aggregate(xFinal2 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]/60
+    yInitial2 <- aggregate(yInitial2 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]
+    yFinal2 <- aggregate(yFinal2 ~ RegressionLabel, data = FractalRepresentationLimit(), FUN = mean)[,2]
+    
+    RegressionLimits2 <- data.frame(Label,xInitial2,xFinal2,yInitial2,yFinal2)
+    colnames(RegressionLimits2) <- c("Label","xInitial","xFinal","yInitial","yFinal")
+    RegressionLimits2 <- RegressionLimits2[order(x),]
+    RegressionLimits <- rbind(RegressionLimits1,RegressionLimits2)
+  }
+  else{
+    RegressionLimits <- RegressionLimits1
+  }
+  
+  
+  
+  fig <- RepresentationData %>%
+    mutate(Labels = fct_relevel(Labels, 
+                                graphsAestethics$df[,'Label'])) %>%
+    ggplot(aes(x=xPlot/60,y=yPlot,colour = Labels, na.rm=TRUE))+
+    geom_point(size=2) +
+    scale_fill_manual(values = alpha(graphsAestethics$df[,'lineColor'], .8))+
+    scale_colour_manual(values = graphsAestethics$df[,'lineColor'])
+  
+  if(input$twoScaling == TRUE){
+    fig <- fig + geom_segment(aes(x = xInitial, y = yInitial,
+                     xend = xFinal, yend = yFinal),data = RegressionLimits,
+                 colour = rep(graphsAestethics$df[,'lineColor'],2),size=1)
+  }
+  else{
+    fig <- fig + geom_segment(aes(x = xInitial, y = yInitial,
+                                  xend = xFinal, yend = yFinal),data = RegressionLimits,
+                              colour = graphsAestethics$df[,'lineColor'],size=1)
+  }
+  
+  fig <- whiteBackground(fig, input$titleLetterSize4, input$axisLabelSize4,
+                         input$axisNumbersSize4, input$dataLabelSize4)+
+    labs(title = DAFfigureTitle(), x = DAFfigureXlabel(), y = DAFfigureYlabel())
+  
+  DAFfigure(fig)
+}
 
 # Relative amplitude calculus
 RAmp <- function(data){
@@ -360,7 +574,7 @@ Phase_IV_RA_IS <- function() {
         if (dayTime/86400 - round(dayTime/86400) == 0){
           #Get data for all day acrophases
           File <- file
-          Label <- paste(label,order,sep = " - ")
+          Label <- label
           Channel <- ch
           Start_date <- as.character(start_time)
           End_date <- as.character(end_time)
@@ -372,7 +586,7 @@ Phase_IV_RA_IS <- function() {
           
           #Get data for daily acrophases
           Files <- c(Files, file)
-          Labels <- c(Labels, paste(label,order,sep = " - "))
+          Labels <- c(Labels, label)
           Channels <- c(Channels, ch)
           Start_dates <- c(Start_dates, as.character(start_time))
           End_dates <- c(End_dates, as.character(end_time))
@@ -406,7 +620,7 @@ Phase_IV_RA_IS <- function() {
       else{
         is <- NA
       }
-      label<-paste(label,order,sep=" - ")
+      label<-label
       row <- data.frame(file,label, ch,start_time,end_time,is)
       isData <- rbind(isData,row)
       
@@ -419,6 +633,11 @@ Phase_IV_RA_IS <- function() {
     periodicData <- data.frame(Files,Labels, Channels,Start_dates,End_dates,Day,Acrophase,ivData,raData)
     colnames(periodicData)[8] <- "IV"
     colnames(periodicData)[9] <- "RA"
+    periodicData[,ID] <- interaction(Files,Labels,Channels,sep="|")
+    
+    x <- ordered(Labels, levels=graphsAestethics$df[,'Label'])
+    periodicData <- periodicData[order(x),]
+    isData <- isData[order(x),]
     
     ###### Circadian Phase #####
     colnames(dataAct)[6]<-'ID'
@@ -436,8 +655,9 @@ Phase_IV_RA_IS <- function() {
   
     phase <- cbind(dataAct[match(unique(dataAct[,'ID']),dataAct[,'ID']),1:6],Acrophase[,7])
     colnames(phase) <- c("File","Labels","Channels","Start_datetime","End_datetime","ID","Phase")
+    phase <- setDT(phase)
     phase[,'yPlot']  <- phase[,7]
-    phase[,'xPlot']  <- phase[,2]
+    phase[,'xPlot'] <- "Phase"
     phase[,'Data'] <- phase[,2]
     
     CircadianData$phase <- phase
@@ -454,16 +674,19 @@ Phase_IV_RA_IS <- function() {
   
     #Get IV data
     # 
-    intraDailyVariations <- cbind(periodicData[,1:6],periodicData[,8])
-    colnames(intraDailyVariations) <- c("File","Labels","Channels","Start_datetime","End_datetime","Day","IV")
+    intraDailyVariations <- cbind(periodicData[,1:6],periodicData[,8],periodicData[,10])
+    colnames(intraDailyVariations) <- c("File","Labels","Channels","Start_datetime","End_datetime","Day","IV","ID")
     
     intraDailyVariations[,'yPlot'] <- intraDailyVariations[,7]
-    intraDailyVariations[,'xPlot'] <- intraDailyVariations[,'Labels']
-    intraDailyVariations[,'Data'] <- intraDailyVariations[,'Labels']
+    intraDailyVariations[,'xPlot'] <-'Intra-daily variation'
+    intraDailyVariations[,'Data'] <- intraDailyVariations[,2]
+    yPlot <- aggregate(yPlot ~ ID, data=intraDailyVariations, FUN=mean)
     
-    yPlot <- aggregate(yPlot ~ interaction(Files,Labels,Channels,sep = "_") , data=intraDailyVariations, FUN=mean)[,2]
+    x <- ordered(yPlot[,1], levels=unique(intraDailyVariations[,8]))
+    yPlot <- yPlot[order(x),]
+    
     intraDailyVariations <- intraDailyVariations[which(Day == min(Day)),]
-    intraDailyVariations[,'yPlot'] <- yPlot
+    intraDailyVariations[,'yPlot'] <- yPlot[,2]
   
     CircadianData$iv <- intraDailyVariations
   
@@ -480,18 +703,21 @@ Phase_IV_RA_IS <- function() {
     
     #Get RA data
     # 
-    relativeAmplitude <- cbind(periodicData[,1:6],periodicData[,9])
-    colnames(relativeAmplitude) <- c("File","Labels","Channels","Start_datetime","End_datetime","Day","RA")
+    relativeAmplitude <- cbind(periodicData[,1:6],periodicData[,9],periodicData[,10])
+    colnames(relativeAmplitude) <- c("File","Labels","Channels","Start_datetime","End_datetime","Day","RA","ID")
     
     relativeAmplitude[,'yPlot'] <- relativeAmplitude[,7]
-    relativeAmplitude[,'xPlot'] <- relativeAmplitude[,'Labels']
+    relativeAmplitude[,'xPlot'] <- "Relative amplitude"
     relativeAmplitude[,'Data'] <- relativeAmplitude[,'Labels']
 
-    yPlot <- aggregate(yPlot ~ interaction(Files,Labels,Channels,sep = "_") , data=relativeAmplitude, FUN=mean)[,2]
-    relativeAmplitude <- relativeAmplitude[which(Day == min(Day)),]
-    relativeAmplitude[,'yPlot'] <- yPlot
+    yPlot <- aggregate(yPlot ~ ID , data=relativeAmplitude, FUN=mean)
     
-    CircadianData$ra <- drop.levels(relativeAmplitude)
+    x <- ordered(yPlot[,1], levels=unique(intraDailyVariations[,8]))
+    yPlot <- yPlot[order(x),]
+    relativeAmplitude <- relativeAmplitude[which(Day == min(Day)),]
+    relativeAmplitude[,'yPlot'] <- yPlot[,2]
+    
+    CircadianData$ra <- relativeAmplitude
     
     #RA per day
     relativeAmplitudePerDay <- cbind(periodicData[,1:6],periodicData[,9])
@@ -508,7 +734,7 @@ Phase_IV_RA_IS <- function() {
     # 
     interdailyStability <- isData
     interdailyStability[,'yPlot'] <- interdailyStability[,6]
-    interdailyStability[,'xPlot'] <- interdailyStability[,'Labels']
+    interdailyStability[,'xPlot'] <- "Inter-daily stability"
     interdailyStability[,'Data'] <- interdailyStability[,'Labels']
     # 
     CircadianData$is <- interdailyStability
@@ -521,7 +747,10 @@ updatePeriodogramFig <- function(){
   
   req(CircadianData$periodogram)
   #Create periodogram
-  fig<- ggperio(CircadianData$periodogram, aes(period, power, colour=Data, linetype = Data)) +
+  fig<- CircadianData$periodogram %>%
+    mutate(Labels = fct_relevel(as.character(Labels), 
+                                graphsAestethics$df[,'Label'])) %>%
+    ggperio(aes(period, power, colour=Labels, linetype = Labels)) +
     stat_pop_etho() +
     scale_colour_manual(values = graphsAestethics$df[,'lineColor'])+
     scale_linetype_manual(values=graphsAestethics$df[,'lineType'])
@@ -670,104 +899,7 @@ updatePhaseFigures <- function(){
   updateISFig()
 }
 
-updateDAFfig <- function(){
-  
-  req(damData$dt)
-  
-  ##### Representation data
-  
-  ### Regression variables
-  yInitial1 <- c()
-  yFinal1 <- c()
-  xInitial1 <- c()
-  xFinal1 <- c()
-  
-  yInitial2 <- c()
-  yFinal2 <- c()
-  xInitial2 <- c()
-  xFinal2 <- c()
-  
-  uniqueLabels <- unlist(unique(damData$dt[,'labels',meta=T]))
-  uniqueData <- unlist(unique(damData$dt[,'Data',meta=T]))
-  
-  Labels1 <- c()
-  xPlot1 <- c()
-  yPlot1 <- c()
-  
-  Labels2 <- c()
-  xPlot2 <- c()
-  yPlot2 <- c()
-  
-  for (i in 1:length(uniqueLabels)){
-    #Mean activity scaling expoent
-    animalData <- damData$dt[damData$dt[,labels] == uniqueLabels[i] & day_night == TRUE,]
-    activityPerLabels <- aggregate(activity ~ interaction(labels,t),
-                                   data = animalData,
-                                   FUN = mean)
-    
-    #Note use the mean activity for detrended  fluctuation analysis
-    dfa.analysis <- dfa(time.series = activityPerLabels[,'activity'],npoints = input$nFractal,
-                        window.size.range=c(mins(input$Fractal_limits[1]),mins(input$TimeScale_limits)), do.plot=FALSE)
-    
-    Labels1 <- c(Labels1,rep(as.character(uniqueData[i]),input$nFractal))
-    xPlot1 <- c(xPlot1,dfa.analysis$window.sizes)
-    yPlot1 <- c(yPlot1,dfa.analysis$fluctuation.function)
-    
-    ### Regression1
-    estimation1 <- estimate(dfa.analysis,do.plot=FALSE)
-    EstimateAttr1 <- attributes(estimation1)$fitted
-    xInitial1 <- c(xInitial1,EstimateAttr1$x[1])
-    yInitial1 <- c(yInitial1,EstimateAttr1$y[1])
-    xFinal1 <- c(xFinal1,EstimateAttr1$x[length(EstimateAttr1$x)])
-    yFinal1 <- c(yFinal1,EstimateAttr1$y[length(EstimateAttr1$y)])
-    
-    dfa.analysis <- dfa(time.series = activityPerLabels[,'activity'],npoints = input$nFractal,
-                        window.size.range=c(mins(input$TimeScale_limits),mins(input$Fractal_limits[2])), do.plot=FALSE)
-    
-    Labels2 <- c(Labels2,rep(as.character(uniqueData[i]),input$nFractal))
-    xPlot2 <- c(xPlot2,dfa.analysis$window.sizes)
-    yPlot2 <- c(yPlot2,dfa.analysis$fluctuation.function)
-    
-    ### Regression2
-    estimation2 <- estimate(dfa.analysis,do.plot=FALSE)
-    EstimateAttr2 <- attributes(estimation2)$fitted
-    xInitial2 <- c(xInitial2,EstimateAttr2$x[1])
-    yInitial2 <- c(yInitial2,EstimateAttr2$y[1])
-    xFinal2 <- c(xFinal2,EstimateAttr2$x[length(EstimateAttr2$x)])
-    yFinal2 <- c(yFinal2,EstimateAttr2$y[length(EstimateAttr2$y)])
-  }
-  
-  Labels <- c(Labels1,Labels2)
-  xPlot <- c(xPlot1, xPlot2)
-  yPlot <- c(yPlot1, yPlot2)
-  
-  RepresentationData <- data.frame(Labels, xPlot, yPlot)
-  
-  
-  #Regression lines
-  xInitial <- c(xInitial1, xInitial2)/60
-  xFinal <- c(xFinal1,xFinal2)/60
-  yInitial <- c(yInitial1, yInitial2)
-  yFinal <- c(yFinal1, yFinal2)
-  
-  RegressionLimits <- data.frame(xInitial,xFinal,yInitial,yFinal)
-  
-  fig <- ggplot(RepresentationData,aes(x=xPlot/60,y=yPlot,colour = Labels, na.rm=TRUE))+
-    geom_point(size=1) +
-    geom_segment(aes(x = xInitial, y = yInitial,
-                     xend = xFinal, yend = yFinal),data = RegressionLimits,
-                 colour = rep(graphsAestethics$df[,'lineColor'],2))+
-    scale_fill_manual(values = alpha(graphsAestethics$df[,'lineColor'], .8))+
-    scale_colour_manual(values = graphsAestethics$df[,'lineColor'])
-  
-  fig <- whiteBackground(fig, input$titleLetterSize4, input$axisLabelSize4,
-                         input$axisNumbersSize4, input$dataLabelSize4)+
-    labs(title = DAFfigureTitle(), x = DAFfigureXlabel(), y = DAFfigureYlabel())
-  
-  DAFfigure(fig)
-  
-  
-}
+
 
 #####Update Y axis range
 updateYPeriodogram <- function() {
@@ -1163,15 +1295,11 @@ observeEvent(input$periodogramAnalysis,{
 observeEvent(input$phaseAnalysis,{
   req(damData$dt)
   
-  withProgress(message = 'Phase analysis', value = 0, {
-    #Data analysis
-    Phase_IV_RA_IS()
-    incProgress(0.85)
+  #Data analysis
+  Phase_IV_RA_IS()
     
-    #Compute figures
-    updatePhaseFigures()
-    incProgress(0.15)
-  })
+  #Compute figures
+  updatePhaseFigures()
 })
 
 observeEvent(input$fractalAnalysis,{
@@ -1250,29 +1378,27 @@ observe({
   req(nrow(damData$dt)>0)
   req(nrow(CircadianData$periodogram)>0)
   
-  minimum  <- floor(min(CircadianData$power[,'yPlot']))
   maximum <- ceiling(max(CircadianData$power[,'yPlot']))
   step <- 0.1
   
   if (input$periodogramTabs == "Periodogram"){
-    period <- CircadianStatistics$periodogram
+    data<- CircadianStatistics$periodogram
   }
   else{
     if (input$periodogramTabs == "Period"){
-      period <- CircadianStatistics$period
+      data <- CircadianStatistics$period
       
-      minimum  <- floor(min(CircadianData$period[,'yPlot']))
       maximum <- ceiling(max(CircadianData$period[,'yPlot']))
       step <- 1
     }
     else{
-      period <- CircadianStatistics$power
+      data <- CircadianStatistics$power
     }
   }
   
-  updateSliderInput(session,"yLimitsPeriod", min = minimum, max = maximum, value = c(minimum,maximum),step = step)
+  updateSliderInput(session,"yLimitsPeriod", min = 0, max = maximum, value = c(0,maximum),step = step)
   
-  output$PeriodogramSummary <- DT::renderDataTable(period,
+  output$PeriodogramSummary <- DT::renderDataTable(data,
                                              escape = FALSE, selection = 'none', 
                                              editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
 })
@@ -1283,14 +1409,12 @@ observe({
   req(nrow(damData$dt)>0)
   req(nrow(CircadianData$phase)>0)
   
-  x <- TRUE
   if (input$phaseTabs == "Phase"){
     phase <- CircadianData$phase
   }
   else{
     if (input$phaseTabs == "Phase per day"){
       phase <- CircadianData$phasePerDay
-      x<-FALSE
       }
     else{
       if(input$phaseTabs == "Interdaily stability"){
@@ -1303,7 +1427,6 @@ observe({
         else{
           if(input$phaseTabs == "Intradaily variation per day"){
             phase <- CircadianData$ivPerDay
-            x<-FALSE
           }
           else{
             if(input$phaseTabs == "Relative amplitude"){
@@ -1311,7 +1434,6 @@ observe({
             }
             else{
               phase <- CircadianData$raPerDay
-              x<-FALSE
             }
           }
         }
@@ -1321,7 +1443,7 @@ observe({
   
   updateSliderInput(session,"yLimitsPhase", min = floor(min(phase[,'yPlot'])), max = ceiling(max(phase[,'yPlot'])), value = c(floor(min(phase[,'yPlot'])),ceiling(max(phase[,'yPlot']))))
   
-  output$PhaseSummary <- DT::renderDataTable(PeriodogramReport(phase,x),
+  output$PhaseSummary <- DT::renderDataTable(PhaseReport(phase),
                                                 escape = FALSE, selection = 'none',
                                                 editable  = list(target = 'cell',disable = list(columns = c(1,3,4,5,6,7,8,9))))
 })
@@ -1360,8 +1482,8 @@ observeEvent(input$updateAesthetics4,{
   withProgress(message = 'Update data and graphs', value = 0, {
     
     if(!is.null(CircadianFigures$periodogram)){
-      updateYPeriodogram()
       updatePeriodogramFigures()
+      updateYPeriodogram()
       incProgress(0.2)
       PeriodicStatisticsData()
       incProgress(0.2)
@@ -1372,13 +1494,15 @@ observeEvent(input$updateAesthetics4,{
     
     #Compute figures
     if(!is.null(CircadianFigures$phase)){
-      updateYPhase()
       updatePhaseFigures()
+      updateYPhase()
+      
     }
     incProgress(0.2)
     
     #Compute figures
     if(!is.null(DAFfigure())){
+      DAFsummary()
       updateDAFfig()
       incProgress(0.2)
       DAFStatistics()
@@ -1680,6 +1804,8 @@ observe({
       Start_datetime <- metadata[,start_datetime]
       End_datetime <- metadata[,stop_datetime]
       
+      data[,'period'] <- data[,'period']/3600
+      
       exportAllChannels <- data.frame(Files,Labels,Channels,Start_datetime,End_datetime,data[,2:5])
       addDataFrame(exportAllChannels, sheet=sheet, startColumn=1, row.names=FALSE)
   
@@ -1709,6 +1835,10 @@ observe({
       }
       colnames(periodData)<- unlist(joinedDataPeriod[,'Labels'])
       colnames(powerData)<- unlist(joinedDataPower[,'Labels'])
+      
+      col_order <- graphsAestethics$df[,'Label']
+      periodData <- periodData[, col_order]/3600
+      powerData <- powerData[, col_order]
   
   
       sheet <- createSheet(wb, "Period")
@@ -1773,13 +1903,14 @@ observe({
           }
         }
       }
+      print(data)
       
       sheet <- createSheet(wb, "Statistics")
-      addDataFrame(PeriodogramReport(data,all), sheet=sheet, startColumn=1, row.names=FALSE)
+      addDataFrame(PhaseReport(data), sheet=sheet, startColumn=1, row.names=FALSE)
       
       colnames(data)[1] <- 'Files'
       colnames(data)[2] <- 'Labels'
-      data[,'Labels'] <- str_split_fixed(data[,'Data']," - ",2)[,1]
+      # data[,'Labels'] <- str_split_fixed(data[,'Labels']," - ",2)[,1]
       colnames(data)[3] <- 'Channels'
       colnames(data)[4] <- 'Start_datetime'
       colnames(data)[5] <- 'End_datetime'
@@ -1804,6 +1935,9 @@ observe({
           Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
         }
         colnames(Data)<- unlist(joinedData[,'Labels'])
+        
+        col_order <- graphsAestethics$df[,'Label']
+        Data <- Data[, col_order]
 
         sheet <- createSheet(wb, input$phaseTabs)
         addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
@@ -1823,6 +1957,9 @@ observe({
             Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
           }
           colnames(Data)<- unlist(joinedData[,'Labels'])
+          
+          col_order <- graphsAestethics$df[,'Label']
+          Data <- Data[, col_order]
           
           sheet <- createSheet(wb, as.character(days[k]))
           addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)
@@ -1859,7 +1996,11 @@ observe({
       
       data <-DAFdata$ScalingExponents
       labels <- unique(data['Labels'])
-      Se <- c("ScalingExponent1","ScalingExponent2")
+      if (input$twoScaling == TRUE){
+        Se <- c("ScalingExponent1","ScalingExponent2")}
+      else{
+        Se <- "ScalingExponent1"
+      }
       for(k in 1:length(Se)){
           
           DF <- data.frame(data[,'Labels'],data[,Se[k]])
@@ -1873,6 +2014,9 @@ observe({
             Data <- cbind.fill(Data, (unlist(joinedData[i,'data'])))
           }
           colnames(Data)<- unlist(joinedData[,'Labels'])
+          
+          col_order <- graphsAestethics$df[,'Label']
+          Data <- Data[, col_order]
           
           sheet <- createSheet(wb, Se[k])
           addDataFrame(Data, sheet=sheet, startColumn=1, row.names=FALSE)

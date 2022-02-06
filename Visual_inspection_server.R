@@ -201,7 +201,9 @@ plotLabels <- function(fig,graph){
 updateActogram  <- function () {
   
   ##### Actogram Figure #####
-  fig <- ggetho(damData$dt,aes(x = periodT, y = Data,z = activity),
+  
+  fig <- damData$dt %>%
+    ggetho(aes(x = periodT, y = Data,z = activity),
                 summary_FUN = sum,summary_time_window = mins(binSize()))
   
   if (input$tile_bar == "bar"){
@@ -222,7 +224,8 @@ updateActogram  <- function () {
 updateDoublePlot <- function() {
   
   ##### Double-plot Actogram Figure #####
-  fig <- ggetho(damData$dt,aes(x = t, z = activity),multiplot = 2, multiplot_period = hours(l_period()), summary_FUN = sum,
+  fig <- damData$dt %>%
+    ggetho(aes(x = t, z = activity),multiplot = 2, multiplot_period = hours(l_period()), summary_FUN = sum,
                 summary_time_window = mins(binSize())) + facet_wrap( ~ Data)
   
   if (input$tile_bar == "bar"){
@@ -243,7 +246,8 @@ updateDoublePlot <- function() {
 updateChronogram <- function() {
   
   ##### Chronogram Figure #####
-  fig <- ggetho(damData$dt,aes(x = periodT, y = activity, colour=Data, linetype = Data),summary_FUN = sum,
+  fig <- damData$dt %>%
+    ggetho(aes(x = periodT, y = activity, colour=Data, linetype = Data),summary_FUN = sum,
                 summary_time_window = mins(binSize())) + stat_pop_etho()
   
   #Change graphs aestethics
@@ -273,7 +277,8 @@ updateChronogram24h <- function(){
   n <- as.numeric(ceiling((max(damData$dt[,'t'])-min(damData$dt[,'t']))/(l_period()*3600)))
   damData$dt[,'activity24h':= damData$dt[,'activity']/n]
   
-  fig <- ggetho(damData$dt,aes(x = periodT, y = activity24h, colour=Data, linetype = Data),summary_FUN = sum,
+  fig <- damData$dt %>%
+    ggetho(aes(x = periodT, y = activity24h, colour=Data, linetype = Data),summary_FUN = sum,
                 summary_time_window = mins(binSize()), time_wrap = hours(l_period()))+stat_pop_etho()
   
   #Change graph aestethics
@@ -301,7 +306,8 @@ updateCumActivity<- function(){
   
   ##### Cumulative activity #####
   #Create cumulative activity graph
-  fig <- ggetho(damData$dt,aes(x = periodT, y = auc, colour=Data, linetype = Data),summary_FUN = max,
+  fig <- damData$dt %>%
+    ggetho(aes(x = periodT, y = auc, colour=Data, linetype = Data),summary_FUN = max,
                 summary_time_window = mins(binSize())) + stat_pop_etho()
   
   fig <- fig + scale_colour_manual(values = graphsAestethics$df[,'lineColor'])+
@@ -326,7 +332,8 @@ updateSleep <- function(){
   
   ##### Sleep chronogram #####
   
-  fig <- ggetho(damData$dt,aes(x = periodT, y = asleep, colour=Data, linetype = Data),summary_FUN = mean,
+  fig <- damData$dt %>%
+    ggetho(aes(x = periodT, y = asleep, colour=Data, linetype = Data),summary_FUN = mean,
                 summary_time_window = mins(binSize())) + stat_pop_etho()
   
   fig <- fig + scale_colour_manual(values = graphsAestethics$df[,'lineColor'])+
@@ -355,19 +362,19 @@ updateFigures <- function(){
   withProgress(message = 'Computing periodic graphs', value = 0, {
     incProgress(1/6) #Increment of progress bar
     updateActogram()
-    
+
     incProgress(1/6) #Increment of progress bar
     updateDoublePlot()
-    
+
     incProgress(1/6) #Increment of progress bar
     updateChronogram()
-    
+
     incProgress(1/6) #Increment of progress bar
     updateChronogram24h()
-    
+
     incProgress(1/6) #Increment of progress bar
     updateCumActivity()
-    
+
     incProgress(1/6) #Increment of progress bar
     updateSleep()
   })

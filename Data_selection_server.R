@@ -282,6 +282,28 @@ observeEvent(input$files,{
         showNotification(paste(filename, "has a wrong column number"), type = "error", duration = 5)
       }
       
+      #Verify if first 10 columns are in he correct format
+      colTypes <- sapply(data,class) #Column types of data
+      if (any(colTypes=="numeric")){
+        showNotification(paste(filename, "has decimal values"), type = "error", duration = 5)
+        validate(
+          need(!any(colTypes=="numeric"),"")
+        )
+      }
+      checkColType <- rep("integer",44)
+      checkColType[3] <- "character"
+      checkColType[5] <- "character"
+      checkColType[10] <- "character"
+      
+      for (i in 1:12){
+        if (colTypes[i] != checkColType[i]){
+          showNotification(paste("Column", as.character(i), "of", filename, "should be",checkColType[i]), type = "error", duration = 5)
+          validate(
+            need(colTypes[i] == checkColType[i],"")
+          )
+        }
+      }
+      
       
       #### Check for files with missing data
       activityData <- data[,13:44]
@@ -294,6 +316,7 @@ observeEvent(input$files,{
         MissingDataFiles <- c(MissingDataFiles, filename)
         showNotification(paste(filename, "has missing data"), type = "error", duration = 5)
       }
+      
     }
     
     # Do not continue if data import was not successful for all files
@@ -1192,7 +1215,6 @@ observeEvent(input$startanalysis,{
     
     #Periodic time adjustable by the user
     damData$dt[,'periodT' := (damData$dt[,'t'])]
-    
     
     #Create labels, file, channels and order 
     damData$dt[,labels := damData$dt[1,labels,meta=T]]

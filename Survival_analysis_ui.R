@@ -91,17 +91,19 @@ div(
                                     DT::dataTableOutput("DeadTubes")),
                            
                            fluidRow(style = "margin-top:20px",
-                             column(3, style = "margin-bottom:27px",
+                             column(2, style = "margin-top:20px; margin-bottom:27px",
                                     downloadButton("saveDeath", "Save death analysis")),
-                             column(2, style = "margin-bottom:27px",
+                             column(2, style = "margin-top:20px; margin-bottom:27px",
                                     downloadButton("saveDeathFigure", "Save figures")),
-                             column(1, style = "margin-bottom:10px",
+                             column(2, style = "margin-top:0px;margin-bottom:27px",
                                     selectInput("DeathFig","",choices = c(".png",".jpg",".tiff"), selected = ".png")),
                              
-                            column(3,actionButton("deleteInactivity","Remove inactivity data", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 
+                            column(3,style = "margin-top:20px",
+                            actionButton("deleteInactivity","Remove inactivity data", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 
                         border-style: none; color: white; font-size:11pt; border-radius: 5px; width:100%")),
                             
-                            column(3,actionButton("deleteAnimals","Remove dead animals", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 
+                            column(3,style = "margin-top:20px",
+                            actionButton("deleteAnimals","Remove dead animals", class="btn btn-warning", style="width = 300px; background-color: #FF6347; 
                         border-style: none; color: white; font-size:11pt; border-radius: 5px; width:100%"))),
                      
                            ),
