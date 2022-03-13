@@ -2098,7 +2098,7 @@ observe({
 observe({
   req(BoutSleepLatencyFigures$all)
   
-  output$saveSleepTimeFig <- downloadHandler(
+  output$saveSleepLatencyFig <- downloadHandler(
     
     filename = function(){
       paste0(input$SleepLatencyPlotsTabs,input$SleepTimeFig)

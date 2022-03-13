@@ -384,6 +384,28 @@ observeEvent(input$evaluateDeath,{
         
       })
     }
+    if(length(unique(cleanData()[,id,meta=T]))!= length(unique(damData$dt[,id,meta=T]))){
+      aliveId <- cleanData()[,id,meta=T]
+      allId <-damData$dt[,id,meta=T]
+      message <- ""
+      for (i in 1:length(allId)){
+        if(!any(as.character(allId[i]) %in% as.character(aliveId))){
+          message <- paste(message,allId[i], sep = "; ")
+          index <- which(damData$dt[,id]==as.character(allId[i]))[1]
+          damData$dt[index,activity:=1]
+          damData$dt[index,moving:=TRUE]}
+      }
+      showNotification(paste("The following lanes don't have activity:", message), type = "error", duration = 10)
+      
+      withProgress(message = 'Re-analyzing last inactivity', value = 0, {
+        cleanData(curate_dead_animals(damData$dt,prop_immobile = 0,time_window = hours(20000), resolution = 20000))
+        
+        deadTable(NULL)
+        enable('clean_data')
+        
+      })
+    }
+    
   
     incProgress(0.33)
   

@@ -145,6 +145,7 @@ shinyApp(
       stopApp()
       q("no")
     })
+    Sys.setlocale("LC_TIME","C")
 
     options(shiny.maxRequestSize=100*1024^2)
     
